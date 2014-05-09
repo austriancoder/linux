@@ -643,7 +643,7 @@ void msm_gpu_cleanup(struct msm_gpu *gpu)
 	if (gpu->rb) {
 		if (gpu->rb_iova)
 			msm_gem_put_iova(gpu->rb->bo, gpu->id);
-		vivante_ringbuffer_destroy(gpu->rb);
+		msm_ringbuffer_destroy(gpu->rb);
 	}
 
 	if (gpu->mmu)

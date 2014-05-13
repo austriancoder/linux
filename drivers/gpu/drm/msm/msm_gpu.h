@@ -149,8 +149,8 @@ static inline u32 gpu_read(struct msm_gpu *gpu, u32 reg)
 	return msm_readl(gpu->mmio + (reg << 2));
 }
 
-int vivante_gpu_pm_suspend(struct msm_gpu *gpu);
-int vivante_gpu_pm_resume(struct msm_gpu *gpu);
+int msm_gpu_pm_suspend(struct msm_gpu *gpu);
+int msm_gpu_pm_resume(struct msm_gpu *gpu);
 
 void msm_gpu_perfcntr_start(struct msm_gpu *gpu);
 void msm_gpu_perfcntr_stop(struct msm_gpu *gpu);

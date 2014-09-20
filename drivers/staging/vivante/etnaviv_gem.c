@@ -19,10 +19,10 @@
 #include <linux/shmem_fs.h>
 #include <linux/dma-buf.h>
 
-#include "vivante_drv.h"
-#include "vivante_gem.h"
-#include "vivante_gpu.h"
-#include "vivante_mmu.h"
+#include "etnaviv_drv.h"
+#include "etnaviv_gem.h"
+#include "etnaviv_gpu.h"
+#include "etnaviv_mmu.h"
 
 /* called with dev->struct_mutex held */
 static struct page **get_pages(struct drm_gem_object *obj)

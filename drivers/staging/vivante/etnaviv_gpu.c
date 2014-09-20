@@ -17,10 +17,10 @@
 
 #include <linux/component.h>
 #include <linux/of_device.h>
-#include "vivante_gpu.h"
-#include "vivante_gem.h"
-#include "vivante_mmu.h"
-#include "vivante_iommu.h"
+#include "etnaviv_gpu.h"
+#include "etnaviv_gem.h"
+#include "etnaviv_mmu.h"
+#include "etnaviv_iommu.h"
 #include "common.xml.h"
 #include "state.xml.h"
 #include "state_hi.xml.h"

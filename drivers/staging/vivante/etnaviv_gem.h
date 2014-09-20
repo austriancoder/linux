@@ -15,11 +15,11 @@
  * this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef __VIVANTE_GEM_H__
-#define __VIVANTE_GEM_H__
+#ifndef __ETNAVIV_GEM_H__
+#define __ETNAVIV_GEM_H__
 
 #include <linux/reservation.h>
-#include "vivante_drv.h"
+#include "etnaviv_drv.h"
 
 struct etnaviv_gem_object {
 	struct drm_gem_object base;
@@ -97,4 +97,4 @@ struct etnaviv_gem_submit {
 	} bos[0];
 };
 
-#endif /* __VIVANTE_GEM_H__ */
+#endif /* __ETNAVIV_GEM_H__ */

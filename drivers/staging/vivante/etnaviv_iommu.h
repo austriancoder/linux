@@ -14,12 +14,12 @@
  * this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef __VIVANTE_IOMMU_H__
-#define __VIVANTE_IOMMU_H__
+#ifndef __ETNAVIV_IOMMU_H__
+#define __ETNAVIV_IOMMU_H__
 
 #include <linux/iommu.h>
 struct etnaviv_gpu;
 
 struct iommu_domain *etnaviv_iommu_domain_alloc(struct etnaviv_gpu *gpu);
 
-#endif /* __VIVANTE_IOMMU_H__ */
+#endif /* __ETNAVIV_IOMMU_H__ */

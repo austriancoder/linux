@@ -15,8 +15,8 @@
  * this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "vivante_drv.h"
-#include "vivante_mmu.h"
+#include "etnaviv_drv.h"
+#include "etnaviv_mmu.h"
 
 static int etnaviv_fault_handler(struct iommu_domain *iommu, struct device *dev,
 		unsigned long iova, int flags, void *arg)

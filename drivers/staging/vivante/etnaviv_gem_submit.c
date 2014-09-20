@@ -15,9 +15,9 @@
  * this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "vivante_drv.h"
-#include "vivante_gpu.h"
-#include "vivante_gem.h"
+#include "etnaviv_drv.h"
+#include "etnaviv_gpu.h"
+#include "etnaviv_gem.h"
 
 /*
  * Cmdstream submission:

@@ -15,8 +15,8 @@
  * this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#include "vivante_gpu.h"
-#include "vivante_gem.h"
+#include "etnaviv_gpu.h"
+#include "etnaviv_gem.h"
 
 #include "common.xml.h"
 #include "state.xml.h"

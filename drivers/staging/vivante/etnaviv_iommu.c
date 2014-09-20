@@ -21,7 +21,7 @@
 #include <linux/dma-mapping.h>
 #include <linux/bitops.h>
 
-#include "vivante_gpu.h"
+#include "etnaviv_gpu.h"
 #include "state_hi.xml.h"
 
 #define PT_SIZE		SZ_256K

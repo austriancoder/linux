@@ -15,13 +15,13 @@
  * this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef __VIVANTE_GPU_H__
-#define __VIVANTE_GPU_H__
+#ifndef __ETNAVIV_GPU_H__
+#define __ETNAVIV_GPU_H__
 
 #include <linux/clk.h>
 #include <linux/regulator/consumer.h>
 
-#include "vivante_drv.h"
+#include "etnaviv_drv.h"
 
 struct etnaviv_gem_submit;
 
@@ -152,4 +152,4 @@ int etnaviv_gpu_submit(struct etnaviv_gpu *gpu, struct etnaviv_gem_submit *submi
 
 extern struct platform_driver etnaviv_gpu_driver;
 
-#endif /* __VIVANTE_GPU_H__ */
+#endif /* __ETNAVIV_GPU_H__ */

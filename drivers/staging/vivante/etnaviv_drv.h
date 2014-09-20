@@ -151,4 +151,4 @@ static inline int align_pitch(int width, int bpp)
 #define COND(bool, val) ((bool) ? (val) : 0)
 
 
-#endif /* __VIVANTE_DRV_H__ */
+#endif /* __ETNAVIV_DRV_H__ */

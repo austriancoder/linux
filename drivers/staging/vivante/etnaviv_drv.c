@@ -18,8 +18,8 @@
 #include <linux/component.h>
 #include <linux/of_platform.h>
 
-#include "vivante_drv.h"
-#include "vivante_gpu.h"
+#include "etnaviv_drv.h"
+#include "etnaviv_gpu.h"
 
 void etnaviv_register_mmu(struct drm_device *dev, struct etnaviv_iommu *mmu)
 {

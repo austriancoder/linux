@@ -15,8 +15,8 @@
  * this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef __VIVANTE_MMU_H__
-#define __VIVANTE_MMU_H__
+#ifndef __ETNAVIV_MMU_H__
+#define __ETNAVIV_MMU_H__
 
 #include <linux/iommu.h>
 
@@ -34,4 +34,4 @@ void etnaviv_iommu_destroy(struct etnaviv_iommu *iommu);
 
 struct etnaviv_iommu *etnaviv_iommu_new(struct drm_device *dev, struct iommu_domain *domain);
 
-#endif /* __VIVANTE_MMU_H__ */
+#endif /* __ETNAVIV_MMU_H__ */

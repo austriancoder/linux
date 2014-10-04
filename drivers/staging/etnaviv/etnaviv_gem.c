@@ -34,7 +34,7 @@ static struct page **get_pages(struct drm_gem_object *obj)
 		struct page **p;
 		int npages = obj->size >> PAGE_SHIFT;
 
-		p = drm_gem_get_pages(obj, 0);
+		p = drm_gem_get_pages(obj);
 
 		if (IS_ERR(p)) {
 			dev_err(dev->dev, "could not get pages: %ld\n",

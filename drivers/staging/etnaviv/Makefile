@@ -1,4 +1,4 @@
-ccflags-y := -Iinclude/drm -Idrivers/staging/vivante
+ccflags-y := -Iinclude/drm -Idrivers/staging/etnaviv
 ifeq (, $(findstring -W,$(EXTRA_CFLAGS)))
 	ccflags-y += -Werror
 endif

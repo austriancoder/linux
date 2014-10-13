@@ -969,7 +969,7 @@ static int etnaviv_gpu_platform_probe(struct platform_device *pdev)
 	if (IS_ERR(gpu->clk_shader))
 		gpu->clk_shader = NULL;
 
-	gpu->pipe = (int)match->data;
+	gpu->pipe = (long)match->data;
 
 	/* TODO: figure out max mapped size */
 	drm_mm_init(&gpu->mm, 0x80000000, SZ_1G);

@@ -41,7 +41,7 @@ int etnaviv_iommu_map(struct etnaviv_iommu *iommu, uint32_t iova,
 		u32 pa = sg_phys(sg) - sg->offset;
 		size_t bytes = sg->length + sg->offset;
 
-		VERB("map[%d]: %08x %08x(%x)", i, iova, pa, bytes);
+		VERB("map[%d]: %08x %08x(%zx)", i, iova, pa, bytes);
 
 		ret = iommu_map(domain, da, pa, bytes, prot);
 		if (ret)
@@ -79,7 +79,7 @@ int etnaviv_iommu_unmap(struct etnaviv_iommu *iommu, uint32_t iova,
 		if (unmapped < bytes)
 			return unmapped;
 
-		VERB("unmap[%d]: %08x(%x)", i, iova, bytes);
+		VERB("unmap[%d]: %08x(%zx)", i, iova, bytes);
 
 		BUG_ON(!PAGE_ALIGNED(bytes));
 

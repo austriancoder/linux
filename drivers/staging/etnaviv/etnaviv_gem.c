@@ -457,7 +457,7 @@ void msm_gem_describe(struct drm_gem_object *obj, struct seq_file *m)
 	uint64_t off = drm_vma_node_start(&obj->vma_node);
 
 	WARN_ON(!mutex_is_locked(&dev->struct_mutex));
-	seq_printf(m, "%08x: %c(r=%u,w=%u) %2d (%2d) %08llx %p %d\n",
+	seq_printf(m, "%08x: %c(r=%u,w=%u) %2d (%2d) %08llx %p %zd\n",
 			etnaviv_obj->flags, is_active(etnaviv_obj) ? 'A' : 'I',
 			etnaviv_obj->read_fence, etnaviv_obj->write_fence,
 			obj->name, obj->refcount.refcount.counter,

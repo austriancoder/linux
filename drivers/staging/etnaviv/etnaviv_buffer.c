@@ -121,8 +121,8 @@ static void etnaviv_buffer_dump(struct etnaviv_gpu *gpu,
 	u32 size = obj->base.size;
 	u32 *ptr = obj->vaddr;
 
-	dev_info(gpu->dev->dev, "virt %p phys 0x%08x free 0x%08x\n",
-			obj->vaddr, obj->paddr, size - len * 4);
+	dev_info(gpu->dev->dev, "virt %p phys 0x%llx free 0x%08x\n",
+			obj->vaddr, (u64)obj->paddr, size - len * 4);
 
 	print_hex_dump(KERN_INFO, "cmd ", DUMP_PREFIX_OFFSET, 16, 4,
 			ptr, len * 4, 0);
@@ -173,7 +173,7 @@ void etnaviv_buffer_queue(struct etnaviv_gpu *gpu, unsigned int event, struct et
 	cmd = submit->cmd[submit->nr_cmds - 1].obj;
 	CMD_LINK(cmd, 4, buffer->paddr + (back * 4));
 
-	printk(KERN_ERR "stream link @ 0x%08x\n", cmd->paddr + ((cmd->offset - 1) * 4));
+	printk(KERN_ERR "stream link @ 0x%llx\n", (u64)cmd->paddr + ((cmd->offset - 1) * 4));
 	printk(KERN_ERR "stream link @ %p\n", cmd->vaddr + ((cmd->offset - 1) * 4));
 
 	for (i = 0; i < submit->nr_cmds; i++) {
@@ -187,8 +187,8 @@ void etnaviv_buffer_queue(struct etnaviv_gpu *gpu, unsigned int event, struct et
 	/* change ll to NOP */
 	printk(KERN_ERR "link op: %p\n", lw);
 	printk(KERN_ERR "link addr: %p\n", lw + 1);
-	printk(KERN_ERR "addr: 0x%08x\n", submit->cmd[0].obj->paddr);
-	printk(KERN_ERR "back: 0x%08x\n", buffer->paddr + (back * 4));
+	printk(KERN_ERR "addr: 0x%llx\n", (u64)submit->cmd[0].obj->paddr);
+	printk(KERN_ERR "back: 0x%llx\n", (u64)buffer->paddr + (back * 4));
 	printk(KERN_ERR "event: %d\n", event);
 
 	/* Change WAIT into a LINK command; write the address first. */

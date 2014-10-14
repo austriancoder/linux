@@ -45,30 +45,11 @@ static inline void CMD_LOAD_STATE(struct etnaviv_gem_object *buffer, u32 reg, u3
 	OUT(buffer, value);
 }
 
-static inline void CMD_LOAD_STATES(struct etnaviv_gem_object *buffer, u32 reg, u16 count, u32 *values)
-{
-	u16 i;
-	buffer->offset = ALIGN(buffer->offset, 2);
-
-	OUT(buffer, VIV_FE_LOAD_STATE_HEADER_OP_LOAD_STATE | VIV_FE_LOAD_STATE_HEADER_COUNT(count) |
-			VIV_FE_LOAD_STATE_HEADER_OFFSET(reg >> VIV_FE_LOAD_STATE_HEADER_OFFSET__SHR));
-
-	for (i = 0; i < count; i++)
-		OUT(buffer, values[i]);
-}
-
 static inline void CMD_END(struct etnaviv_gem_object *buffer)
 {
 	buffer->offset = ALIGN(buffer->offset, 2);
 
 	OUT(buffer, VIV_FE_END_HEADER_OP_END);
-}
-
-static inline void CMD_NOP(struct etnaviv_gem_object *buffer)
-{
-	buffer->offset = ALIGN(buffer->offset, 2);
-
-	OUT(buffer, VIV_FE_NOP_HEADER_OP_NOP);
 }
 
 static inline void CMD_WAIT(struct etnaviv_gem_object *buffer)

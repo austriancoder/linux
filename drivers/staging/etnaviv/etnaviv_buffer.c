@@ -115,6 +115,7 @@ u32 etnaviv_buffer_init(struct etnaviv_gpu *gpu)
 
 	/* initialize buffer */
 	buffer->offset = 0;
+	buffer->is_ring_buffer = true;
 
 	etnaviv_cmd_select_pipe(buffer, gpu->pipe);
 

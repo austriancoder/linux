@@ -26,6 +26,7 @@
  * Command Buffer helper:
  */
 
+#define CMD_LINK_NUM_WORDS (2 + 1)
 
 static inline void OUT(struct etnaviv_gem_object *buffer, uint32_t data)
 {
@@ -35,8 +36,26 @@ static inline void OUT(struct etnaviv_gem_object *buffer, uint32_t data)
 	vaddr[buffer->offset++] = data;
 }
 
+static inline void buffer_reserve(struct etnaviv_gem_object *buffer, u32 size)
+{
+	u32 *vaddr = (u32 *)buffer->vaddr;
+
+	if (!buffer->is_ring_buffer)
+		return;
+
+	if ((buffer->offset + size + CMD_LINK_NUM_WORDS) * sizeof(*vaddr) <= buffer->base.size)
+		return;
+
+	/* jump to the start of the buffer */
+	buffer->offset = ALIGN(buffer->offset, 2);
+	OUT(buffer, VIV_FE_LINK_HEADER_OP_LINK | VIV_FE_LINK_HEADER_PREFETCH(0xffffffff /* TODO */));
+	OUT(buffer, buffer->paddr);
+	buffer->offset = 0;
+}
+
 static inline void CMD_LOAD_STATE(struct etnaviv_gem_object *buffer, u32 reg, u32 value)
 {
+	buffer_reserve(buffer, 2);
 	buffer->offset = ALIGN(buffer->offset, 2);
 
 	/* write a register via cmd stream */
@@ -47,6 +66,7 @@ static inline void CMD_LOAD_STATE(struct etnaviv_gem_object *buffer, u32 reg, u3
 
 static inline void CMD_END(struct etnaviv_gem_object *buffer)
 {
+	buffer_reserve(buffer, 1);
 	buffer->offset = ALIGN(buffer->offset, 2);
 
 	OUT(buffer, VIV_FE_END_HEADER_OP_END);
@@ -54,6 +74,7 @@ static inline void CMD_END(struct etnaviv_gem_object *buffer)
 
 static inline void CMD_WAIT(struct etnaviv_gem_object *buffer)
 {
+	buffer_reserve(buffer, 1);
 	buffer->offset = ALIGN(buffer->offset, 2);
 
 	OUT(buffer, VIV_FE_WAIT_HEADER_OP_WAIT | 200);
@@ -61,6 +82,7 @@ static inline void CMD_WAIT(struct etnaviv_gem_object *buffer)
 
 static inline void CMD_LINK(struct etnaviv_gem_object *buffer, u16 prefetch, u32 address)
 {
+	buffer_reserve(buffer, 2);
 	buffer->offset = ALIGN(buffer->offset, 2);
 
 	OUT(buffer, VIV_FE_LINK_HEADER_OP_LINK | VIV_FE_LINK_HEADER_PREFETCH(prefetch));
@@ -69,11 +91,16 @@ static inline void CMD_LINK(struct etnaviv_gem_object *buffer, u16 prefetch, u32
 
 static inline void CMD_STALL(struct etnaviv_gem_object *buffer, u32 from, u32 to)
 {
+	buffer_reserve(buffer, 2);
 	buffer->offset = ALIGN(buffer->offset, 2);
 
 	OUT(buffer, VIV_FE_STALL_HEADER_OP_STALL);
 	OUT(buffer, VIV_FE_STALL_TOKEN_FROM(from) | VIV_FE_STALL_TOKEN_TO(to));
 }
+
+/*
+ * High level commands:
+ */
 
 static void etnaviv_cmd_select_pipe(struct etnaviv_gem_object *buffer, u8 pipe)
 {

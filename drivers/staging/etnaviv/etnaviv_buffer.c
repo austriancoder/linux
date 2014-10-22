@@ -40,10 +40,10 @@ static inline void buffer_reserve(struct etnaviv_gem_object *buffer, u32 size)
 {
 	u32 *vaddr = (u32 *)buffer->vaddr;
 
+	buffer->offset = ALIGN(buffer->offset, 2);
+
 	if (!buffer->is_ring_buffer)
 		return;
-
-	buffer->offset = ALIGN(buffer->offset, 2);
 
 	if ((buffer->offset + size + CMD_LINK_NUM_WORDS) * sizeof(*vaddr) <= buffer->base.size)
 		return;

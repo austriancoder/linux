@@ -232,16 +232,11 @@ static int submit_bo(struct etnaviv_gem_submit *submit, uint32_t idx,
 
 /* process the reloc's and patch up the cmdstream as needed: */
 static int submit_reloc(struct etnaviv_gem_submit *submit, struct etnaviv_gem_object *obj,
-		uint32_t offset, uint32_t nr_relocs, uint64_t relocs)
+		uint32_t nr_relocs, uint64_t relocs)
 {
 	uint32_t i, last_offset = 0;
 	uint32_t *ptr = obj->vaddr;
 	int ret;
-
-	if (offset % 4) {
-		DRM_ERROR("non-aligned cmdstream buffer: %u\n", offset);
-		return -EINVAL;
-	}
 
 	for (i = 0; i < nr_relocs; i++) {
 		struct drm_etnaviv_gem_submit_reloc submit_reloc;
@@ -388,8 +383,7 @@ int etnaviv_ioctl_gem_submit(struct drm_device *dev, void *data,
 		 */
 		max_size = etnaviv_obj->base.size - 8;
 
-		if (submit_cmd.size > max_size ||
-		    submit_cmd.submit_offset > max_size - submit_cmd.size) {
+		if (submit_cmd.size > max_size) {
 			DRM_ERROR("invalid cmdstream size: %u\n", submit_cmd.size);
 			ret = -EINVAL;
 			goto out;
@@ -402,8 +396,8 @@ int etnaviv_ioctl_gem_submit(struct drm_device *dev, void *data,
 		if (submit->valid)
 			continue;
 
-		ret = submit_reloc(submit, etnaviv_obj, submit_cmd.submit_offset,
-				submit_cmd.nr_relocs, submit_cmd.relocs);
+		ret = submit_reloc(submit, etnaviv_obj, submit_cmd.nr_relocs,
+				submit_cmd.relocs);
 		if (ret)
 			goto out;
 	}

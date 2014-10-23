@@ -150,9 +150,7 @@ struct drm_etnaviv_gem_submit_reloc {
 struct drm_etnaviv_gem_submit_cmd {
 	uint32_t type;           /* in, one of ETNA_SUBMIT_CMD_x */
 	uint32_t submit_idx;     /* in, index of submit_bo cmdstream buffer */
-	uint32_t submit_offset;  /* in, offset into submit_bo */
 	uint32_t size;           /* in, cmdstream size */
-	uint32_t pad;
 	uint32_t nr_relocs;      /* in, number of submit_reloc's */
 	uint64_t relocs;         /* in, ptr to array of submit_reloc's */
 };

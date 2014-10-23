@@ -165,17 +165,6 @@ static void etnaviv_hw_specs(struct etnaviv_gpu *gpu)
 		gpu->identity.instruction_count = 256;
 		break;
 	}
-
-	dev_info(gpu->dev->dev, "stream_count:  %x\n", gpu->identity.stream_count);
-	dev_info(gpu->dev->dev, "register_max: %x\n", gpu->identity.register_max);
-	dev_info(gpu->dev->dev, "thread_count: %x\n", gpu->identity.thread_count);
-	dev_info(gpu->dev->dev, "vertex_cache_size: %x\n", gpu->identity.vertex_cache_size);
-	dev_info(gpu->dev->dev, "shader_core_count: %x\n", gpu->identity.shader_core_count);
-	dev_info(gpu->dev->dev, "pixel_pipes: %x\n", gpu->identity.pixel_pipes);
-	dev_info(gpu->dev->dev, "vertex_output_buffer_size: %x\n", gpu->identity.vertex_output_buffer_size);
-	dev_info(gpu->dev->dev, "buffer_size: %x\n", gpu->identity.buffer_size);
-	dev_info(gpu->dev->dev, "instruction_count: %x\n", gpu->identity.instruction_count);
-	dev_info(gpu->dev->dev, "num_constants: %x\n", gpu->identity.num_constants);
 }
 
 static void etnaviv_hw_identify(struct etnaviv_gpu *gpu)
@@ -433,6 +422,28 @@ void etnaviv_gpu_debugfs(struct etnaviv_gpu *gpu, struct seq_file *m)
 	u32 idle = gpu_read(gpu, VIVS_HI_IDLE_STATE);
 
 	verify_dma(gpu, &debug);
+
+	seq_puts(m, "\tspecs\n");
+	seq_printf(m, "\t stream_count:  %x\n",
+			gpu->identity.stream_count);
+	seq_printf(m, "\t register_max: %x\n",
+			gpu->identity.register_max);
+	seq_printf(m, "\t thread_count: %x\n",
+			gpu->identity.thread_count);
+	seq_printf(m, "\t vertex_cache_size: %x\n",
+			gpu->identity.vertex_cache_size);
+	seq_printf(m, "\t shader_core_count: %x\n",
+			gpu->identity.shader_core_count);
+	seq_printf(m, "\t pixel_pipes: %x\n",
+			gpu->identity.pixel_pipes);
+	seq_printf(m, "\t vertex_output_buffer_size: %x\n",
+			gpu->identity.vertex_output_buffer_size);
+	seq_printf(m, "\t buffer_size: %x\n",
+			gpu->identity.buffer_size);
+	seq_printf(m, "\t instruction_count: %x\n",
+			gpu->identity.instruction_count);
+	seq_printf(m, "\t num_constants: %x\n",
+			gpu->identity.num_constants);
 
 	seq_printf(m, "\taxi: 0x%08x\n", axi);
 	seq_printf(m, "\tidle: 0x%08x\n", idle);

@@ -389,7 +389,6 @@ int etnaviv_ioctl_gem_submit(struct drm_device *dev, void *data,
 			goto out;
 		}
 
-		submit->cmd[i].type = submit_cmd.type;
 		submit->cmd[i].size = submit_cmd.size / 4;
 		submit->cmd[i].obj = etnaviv_obj;
 

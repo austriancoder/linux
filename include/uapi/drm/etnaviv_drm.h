@@ -136,21 +136,10 @@ struct drm_etnaviv_gem_submit_reloc {
 	uint64_t reloc_offset;   /* in, offset from start of reloc_bo */
 };
 
-/* submit-types:
- *   BUF - this cmd buffer is executed normally.
- *   IB_TARGET_BUF - this cmd buffer is an IB target.  Reloc's are
- *      processed normally, but the kernel does not setup an IB to
- *      this buffer in the first-level ringbuffer
- *   CTX_RESTORE_BUF - only executed if there has been a GPU context
- *      switch since the last SUBMIT ioctl
- */
-#define ETNA_SUBMIT_CMD_BUF             0x0001
-#define ETNA_SUBMIT_CMD_IB_TARGET_BUF   0x0002
-#define ETNA_SUBMIT_CMD_CTX_RESTORE_BUF 0x0003
 struct drm_etnaviv_gem_submit_cmd {
-	uint32_t type;           /* in, one of ETNA_SUBMIT_CMD_x */
 	uint32_t submit_idx;     /* in, index of submit_bo cmdstream buffer */
 	uint32_t size;           /* in, cmdstream size */
+	uint32_t pad;
 	uint32_t nr_relocs;      /* in, number of submit_reloc's */
 	uint64_t relocs;         /* in, ptr to array of submit_reloc's */
 };

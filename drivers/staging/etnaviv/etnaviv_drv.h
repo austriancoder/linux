@@ -66,8 +66,9 @@ struct etnaviv_drm_private {
 
 void etnaviv_register_mmu(struct drm_device *dev, struct etnaviv_iommu *mmu);
 
-int etnaviv_wait_fence_interruptable(struct drm_device *dev, uint32_t pipe,
-		uint32_t fence,	struct timespec *timeout);
+int etnaviv_wait_fence_interruptable(struct drm_device *dev,
+		struct etnaviv_gpu *gpu, uint32_t fence,
+		struct timespec *timeout);
 void etnaviv_update_fence(struct drm_device *dev, uint32_t fence);
 
 int etnaviv_ioctl_gem_submit(struct drm_device *dev, void *data,

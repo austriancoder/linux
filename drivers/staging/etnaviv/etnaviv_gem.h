@@ -70,8 +70,6 @@ static inline bool is_active(struct etnaviv_gem_object *etnaviv_obj)
 	return etnaviv_obj->gpu != NULL;
 }
 
-#define MAX_CMDS 4
-
 /* Created per submit-ioctl, to track bo's and cmdstream bufs, etc,
  * associated with the cmdstream submission for synchronization (and
  * make it easier to unwind when things go wrong, etc).  This only
@@ -84,12 +82,11 @@ struct etnaviv_gem_submit {
 	struct ww_acquire_ctx ticket;
 	uint32_t fence;
 	bool valid;
-	unsigned int nr_cmds;
 	unsigned int nr_bos;
 	struct {
 		uint32_t size;  /* in dwords */
 		struct etnaviv_gem_object *obj;
-	} cmd[MAX_CMDS];
+	} cmd;
 	struct {
 		uint32_t flags;
 		struct etnaviv_gem_object *obj;

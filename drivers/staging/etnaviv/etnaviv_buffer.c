@@ -151,7 +151,7 @@ u32 etnaviv_buffer_init(struct etnaviv_gpu *gpu)
 void etnaviv_buffer_queue(struct etnaviv_gpu *gpu, unsigned int event, struct etnaviv_gem_submit *submit)
 {
 	struct etnaviv_gem_object *buffer = to_etnaviv_bo(gpu->buffer);
-	struct etnaviv_gem_object *cmd;
+	struct etnaviv_gem_object *cmd = submit->cmd.obj;
 	u32 *lw = buffer->vaddr + ((buffer->offset - 4) * 4);
 	u32 back;
 	u32 i;
@@ -168,37 +168,29 @@ void etnaviv_buffer_queue(struct etnaviv_gpu *gpu, unsigned int event, struct et
 	CMD_WAIT(buffer);
 	CMD_LINK(buffer, 2, buffer->paddr + ((buffer->offset - 1) * 4));
 
-	/* update offset for every cmd stream */
-	for (i = 0; i < submit->nr_cmds; i++)
-		submit->cmd[i].obj->offset = submit->cmd[i].size;
-
-	/* TODO: inter-connect all cmd buffers */
+	/* update offset for cmd stream */
+	cmd->offset = submit->cmd.size;
 
 	/* jump back from last cmd to main buffer */
-	cmd = submit->cmd[submit->nr_cmds - 1].obj;
 	CMD_LINK(cmd, 4, buffer->paddr + (back * 4));
 
 	printk(KERN_ERR "stream link @ 0x%llx\n", (u64)cmd->paddr + ((cmd->offset - 1) * 4));
 	printk(KERN_ERR "stream link @ %p\n", cmd->vaddr + ((cmd->offset - 1) * 4));
 
-	for (i = 0; i < submit->nr_cmds; i++) {
-		struct etnaviv_gem_object *obj = submit->cmd[i].obj;
-
-		/* TODO: remove later */
-		if (unlikely(drm_debug & DRM_UT_CORE))
-			etnaviv_buffer_dump(gpu, obj, submit->cmd[i].size);
-	}
+	/* TODO: remove later */
+	if (unlikely(drm_debug & DRM_UT_CORE))
+		etnaviv_buffer_dump(gpu, cmd, submit->cmd.size);
 
 	/* change ll to NOP */
 	printk(KERN_ERR "link op: %p\n", lw);
 	printk(KERN_ERR "link addr: %p\n", lw + 1);
-	printk(KERN_ERR "addr: 0x%llx\n", (u64)submit->cmd[0].obj->paddr);
+	printk(KERN_ERR "addr: 0x%llx\n", (u64)cmd->paddr);
 	printk(KERN_ERR "back: 0x%llx\n", (u64)buffer->paddr + (back * 4));
 	printk(KERN_ERR "event: %d\n", event);
 
 	/* Change WAIT into a LINK command; write the address first. */
-	i = VIV_FE_LINK_HEADER_OP_LINK | VIV_FE_LINK_HEADER_PREFETCH(submit->cmd[0].size * 2);
-	*(lw + 1) = submit->cmd[0].obj->paddr;
+	i = VIV_FE_LINK_HEADER_OP_LINK | VIV_FE_LINK_HEADER_PREFETCH(submit->cmd.size * 2);
+	*(lw + 1) = cmd->paddr;
 	mb();
 	*(lw)= i;
 	mb();

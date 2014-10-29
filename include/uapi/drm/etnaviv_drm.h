@@ -171,9 +171,9 @@ struct drm_etnaviv_gem_submit {
 	uint32_t pipe;           /* in, ETNA_PIPE_x */
 	uint32_t fence;          /* out */
 	uint32_t nr_bos;         /* in, number of submit_bo's */
-	uint32_t nr_cmds;        /* in, number of submit_cmd's */
+	uint32_t pad;
+	uint64_t cmd;            /* in, ptr to submit_cmd */
 	uint64_t bos;            /* in, ptr to array of submit_bo's */
-	uint64_t cmds;           /* in, ptr to array of submit_cmd's */
 };
 
 /* The normal way to synchronize with the GPU is just to CPU_PREP on

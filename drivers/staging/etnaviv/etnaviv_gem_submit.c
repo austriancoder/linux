@@ -47,7 +47,6 @@ static struct etnaviv_gem_submit *submit_create(struct drm_device *dev,
 
 		/* initially, until copy_from_user() and bo lookup succeeds: */
 		submit->nr_bos = 0;
-		submit->nr_cmds = 0;
 
 		INIT_LIST_HEAD(&submit->bo_list);
 		ww_acquire_init(&submit->ticket, &reservation_ww_class);
@@ -314,10 +313,13 @@ int etnaviv_ioctl_gem_submit(struct drm_device *dev, void *data,
 {
 	struct etnaviv_drm_private *priv = dev->dev_private;
 	struct drm_etnaviv_gem_submit *args = data;
+	void __user *userptr = to_user_ptr(args->cmd);
+	struct drm_etnaviv_gem_submit_cmd submit_cmd;
 	struct etnaviv_file_private *ctx = file->driver_priv;
 	struct etnaviv_gem_submit *submit;
 	struct etnaviv_gpu *gpu;
-	unsigned i;
+	struct etnaviv_gem_object *etnaviv_obj;
+	unsigned max_size;
 	int ret;
 
 	if (args->pipe >= ETNA_MAX_PIPES)
@@ -326,9 +328,6 @@ int etnaviv_ioctl_gem_submit(struct drm_device *dev, void *data,
 	gpu = priv->gpu[args->pipe];
 	if (!gpu)
 		return -ENXIO;
-
-	if (args->nr_cmds > MAX_CMDS)
-		return -EINVAL;
 
 	mutex_lock(&dev->struct_mutex);
 
@@ -346,62 +345,54 @@ int etnaviv_ioctl_gem_submit(struct drm_device *dev, void *data,
 	if (ret)
 		goto out;
 
-	for (i = 0; i < args->nr_cmds; i++) {
-		struct drm_etnaviv_gem_submit_cmd submit_cmd;
-		void __user *userptr =
-			to_user_ptr(args->cmds + (i * sizeof(submit_cmd)));
-		struct etnaviv_gem_object *etnaviv_obj;
-		unsigned max_size;
-
-		ret = copy_from_user(&submit_cmd, userptr, sizeof(submit_cmd));
-		if (ret) {
-			ret = -EFAULT;
-			goto out;
-		}
-
-		ret = submit_bo(submit, submit_cmd.submit_idx,
-				&etnaviv_obj, NULL, NULL);
-		if (ret)
-			goto out;
-
-		if (!(etnaviv_obj->flags & ETNA_BO_CMDSTREAM)) {
-			DRM_ERROR("cmdstream bo has flag ETNA_BO_CMDSTREAM not set\n");
-			ret = -EINVAL;
-			goto out;
-		}
-
-		if (submit_cmd.size % 4) {
-			DRM_ERROR("non-aligned cmdstream buffer size: %u\n",
-					submit_cmd.size);
-			ret = -EINVAL;
-			goto out;
-		}
-
-		/*
-		 * We must have space to add a LINK command at the end of
-		 * the command buffer.
-		 */
-		max_size = etnaviv_obj->base.size - 8;
-
-		if (submit_cmd.size > max_size) {
-			DRM_ERROR("invalid cmdstream size: %u\n", submit_cmd.size);
-			ret = -EINVAL;
-			goto out;
-		}
-
-		submit->cmd[i].size = submit_cmd.size / 4;
-		submit->cmd[i].obj = etnaviv_obj;
-
-		if (submit->valid)
-			continue;
-
-		ret = submit_reloc(submit, etnaviv_obj, submit_cmd.nr_relocs,
-				submit_cmd.relocs);
-		if (ret)
-			goto out;
+	ret = copy_from_user(&submit_cmd, userptr, sizeof(submit_cmd));
+	if (ret) {
+		ret = -EFAULT;
+		goto out;
 	}
 
-	submit->nr_cmds = i;
+	ret = submit_bo(submit, submit_cmd.submit_idx, &etnaviv_obj, NULL, NULL);
+	if (ret)
+		goto out;
+
+	if (!(etnaviv_obj->flags & ETNA_BO_CMDSTREAM)) {
+		DRM_ERROR("cmdstream bo has flag ETNA_BO_CMDSTREAM not set\n");
+		ret = -EINVAL;
+		goto out;
+	}
+
+	if (submit_cmd.size % 4) {
+		DRM_ERROR("non-aligned cmdstream buffer size: %u\n",
+				submit_cmd.size);
+		ret = -EINVAL;
+		goto out;
+	}
+
+	/*
+	 * We must have space to add a LINK command at the end of
+	 * the command buffer.
+	 */
+	max_size = etnaviv_obj->base.size - 8;
+
+	if (submit_cmd.size > max_size) {
+		DRM_ERROR("invalid cmdstream size: %u\n", submit_cmd.size);
+		ret = -EINVAL;
+		goto out;
+	}
+
+	submit->cmd.size = submit_cmd.size / 4;
+	submit->cmd.obj = etnaviv_obj;
+
+	/* TODO: do we really need that valid flag? */
+#if 0
+	if (submit->valid)
+		continue;
+#endif
+
+	ret = submit_reloc(submit, etnaviv_obj, submit_cmd.nr_relocs,
+			submit_cmd.relocs);
+	if (ret)
+		goto out;
 
 	ret = etnaviv_gpu_submit(gpu, submit, ctx);
 

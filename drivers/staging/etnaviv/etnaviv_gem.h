@@ -61,7 +61,7 @@ struct etnaviv_gem_object {
 
 	/* for buffer manipulation during submit */
 	bool is_ring_buffer;
-	u32 offset;
+	u32 words;
 };
 #define to_etnaviv_bo(x) container_of(x, struct etnaviv_gem_object, base)
 

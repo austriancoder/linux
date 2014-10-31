@@ -36,25 +36,25 @@ static inline u32 to_bytes(u32 words)
 static inline void OUT(struct etnaviv_gem_object *buffer, uint32_t data)
 {
 	u32 *vaddr = (u32 *)buffer->vaddr;
-	BUG_ON(to_bytes(buffer->words) >= buffer->base.size);
+	BUG_ON(to_bytes(buffer->offset) >= buffer->base.size);
 
-	vaddr[buffer->words++] = data;
+	vaddr[buffer->offset++] = data;
 }
 
 static inline void buffer_reserve(struct etnaviv_gem_object *buffer, u32 size)
 {
-	buffer->words = ALIGN(buffer->words, 2);
+	buffer->offset = ALIGN(buffer->offset, 2);
 
 	if (!buffer->is_ring_buffer)
 		return;
 
-	if (to_bytes(buffer->words + size + CMD_LINK_NUM_WORDS) <= buffer->base.size)
+	if (to_bytes(buffer->offset + size + CMD_LINK_NUM_WORDS) <= buffer->base.size)
 		return;
 
 	/* jump to the start of the buffer */
 	OUT(buffer, VIV_FE_LINK_HEADER_OP_LINK | VIV_FE_LINK_HEADER_PREFETCH(0xffffffff /* TODO */));
 	OUT(buffer, buffer->paddr);
-	buffer->words = 0;
+	buffer->offset = 0;
 }
 
 static inline void CMD_LOAD_STATE(struct etnaviv_gem_object *buffer, u32 reg, u32 value)
@@ -140,45 +140,45 @@ u32 etnaviv_buffer_init(struct etnaviv_gpu *gpu)
 	struct etnaviv_gem_object *buffer = to_etnaviv_bo(gpu->buffer);
 
 	/* initialize buffer */
-	buffer->words = 0;
+	buffer->offset = 0;
 	buffer->is_ring_buffer = true;
 
 	etnaviv_cmd_select_pipe(buffer, gpu->pipe);
 
 	CMD_WAIT(buffer);
-	CMD_LINK(buffer, 2, buffer->paddr + to_bytes(buffer->words - 1));
+	CMD_LINK(buffer, 2, buffer->paddr + to_bytes(buffer->offset - 1));
 
-	return buffer->words;
+	return buffer->offset;
 }
 
 void etnaviv_buffer_queue(struct etnaviv_gpu *gpu, unsigned int event, struct etnaviv_gem_submit *submit)
 {
 	struct etnaviv_gem_object *buffer = to_etnaviv_bo(gpu->buffer);
 	struct etnaviv_gem_object *cmd = submit->cmd.obj;
-	u32 *lw = buffer->vaddr + to_bytes(buffer->words - 4);
+	u32 *lw = buffer->vaddr + to_bytes(buffer->offset - 4);
 	u32 back;
 	u32 i;
 
 	etnaviv_buffer_dump(gpu, buffer, 0x50);
 
 	/* save offset back into main buffer */
-	back = buffer->words;
+	back = buffer->offset;
 
 	/* trigger event */
 	CMD_LOAD_STATE(buffer, VIVS_GL_EVENT, VIVS_GL_EVENT_EVENT_ID(event) | VIVS_GL_EVENT_FROM_PE);
 
 	/* append WAIT/LINK to main buffer */
 	CMD_WAIT(buffer);
-	CMD_LINK(buffer, 2, buffer->paddr + to_bytes(buffer->words - 1));
+	CMD_LINK(buffer, 2, buffer->paddr + to_bytes(buffer->offset - 1));
 
 	/* update offset for cmd stream */
-	cmd->words = submit->cmd.size;
+	cmd->offset = submit->cmd.size;
 
 	/* jump back from last cmd to main buffer */
 	CMD_LINK(cmd, 4, buffer->paddr + to_bytes(back));
 
-	printk(KERN_ERR "stream link @ 0x%llx\n", (u64)cmd->paddr + to_bytes(cmd->words - 1));
-	printk(KERN_ERR "stream link @ %p\n", cmd->vaddr + to_bytes(cmd->words - 1));
+	printk(KERN_ERR "stream link @ 0x%llx\n", (u64)cmd->paddr + to_bytes(cmd->offset - 1));
+	printk(KERN_ERR "stream link @ %p\n", cmd->vaddr + to_bytes(cmd->offset - 1));
 
 	/* TODO: remove later */
 	if (unlikely(drm_debug & DRM_UT_CORE))

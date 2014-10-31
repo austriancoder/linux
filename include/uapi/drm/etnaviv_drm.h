@@ -160,7 +160,6 @@ struct drm_etnaviv_gem_submit_cmd {
 struct drm_etnaviv_gem_submit_bo {
 	uint32_t flags;          /* in, mask of ETNA_SUBMIT_BO_x */
 	uint32_t handle;         /* in, GEM handle */
-	uint64_t presumed;       /* in/out, presumed buffer address */
 };
 
 /* Each cmdstream submit consists of a table of buffers involved, and

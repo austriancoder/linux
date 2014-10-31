@@ -78,6 +78,7 @@ static inline void CMD_WAIT(struct etnaviv_gem_object *buffer)
 {
 	buffer_reserve(buffer, 1);
 
+	buffer->last_wait = buffer->vaddr + to_bytes(buffer->offset);
 	OUT(buffer, VIV_FE_WAIT_HEADER_OP_WAIT | 200);
 }
 

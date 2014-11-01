@@ -123,19 +123,6 @@ static void etnaviv_cmd_select_pipe(struct etnaviv_gem_object *buffer, u8 pipe)
 	CMD_LOAD_STATE(buffer, VIVS_GL_PIPE_SELECT, VIVS_GL_PIPE_SELECT_PIPE(pipe));
 }
 
-static void etnaviv_buffer_dump(struct etnaviv_gpu *gpu,
-	struct etnaviv_gem_object *obj, u32 len)
-{
-	u32 size = obj->base.size;
-	u32 *ptr = obj->vaddr;
-
-	dev_info(gpu->dev->dev, "virt %p phys 0x%llx free 0x%08x\n",
-			obj->vaddr, (u64)obj->paddr, size - len * 4);
-
-	print_hex_dump(KERN_INFO, "cmd ", DUMP_PREFIX_OFFSET, 16, 4,
-			ptr, len * 4, 0);
-}
-
 u32 etnaviv_buffer_init(struct etnaviv_gpu *gpu)
 {
 	struct etnaviv_gem_object *buffer = to_etnaviv_bo(gpu->buffer);
@@ -156,47 +143,40 @@ void etnaviv_buffer_queue(struct etnaviv_gpu *gpu, unsigned int event, struct et
 {
 	struct etnaviv_gem_object *buffer = to_etnaviv_bo(gpu->buffer);
 	struct etnaviv_gem_object *cmd = submit->cmd.obj;
-	u32 back;
-	u32 i;
+	u32 ring_jump, i;
+	u32 *fixup, *last_wait;
+	u16 prefetch;
 
-	etnaviv_buffer_dump(gpu, buffer, 0x50);
+	/* store start of the new queuing commands */
+	ring_jump = buffer->offset;
 
-	/* save offset back into main buffer */
-	back = buffer->offset;
+	/* we need to store the current last_wait locally */
+	last_wait = buffer->last_wait;
+
+	/* link to cmd buffer - we need to patch prefetch value later */
+	CMD_LINK(buffer, 0, cmd->paddr);
+
+	/* patch cmd buffer */
+	cmd->offset = submit->cmd.size;
+	CMD_LINK(cmd, 2, buffer->paddr + to_bytes(buffer->offset));
+
+	/* fix prefetch value in 'ring'-buffer */
+	prefetch = cmd->offset;
+	fixup = (u32 *)buffer->vaddr + buffer->offset - 2;
+	*fixup = VIV_FE_LINK_HEADER_OP_LINK | VIV_FE_LINK_HEADER_PREFETCH(prefetch);
 
 	/* trigger event */
-	CMD_LOAD_STATE(buffer, VIVS_GL_EVENT, VIVS_GL_EVENT_EVENT_ID(event) | VIVS_GL_EVENT_FROM_PE);
+	CMD_LOAD_STATE(buffer, VIVS_GL_EVENT,
+			VIVS_GL_EVENT_EVENT_ID(event) | VIVS_GL_EVENT_FROM_PE);
 
-	/* append WAIT/LINK to main buffer */
+	/* append WAIT/LINK to 'ring'-buffer */
 	CMD_WAIT(buffer);
 	CMD_LINK(buffer, 2, buffer->paddr + to_bytes(buffer->offset - 1));
 
-	/* update offset for cmd stream */
-	cmd->offset = submit->cmd.size;
-
-	/* jump back from last cmd to main buffer */
-	CMD_LINK(cmd, 4, buffer->paddr + to_bytes(back));
-
-	printk(KERN_ERR "stream link @ 0x%llx\n", (u64)cmd->paddr + to_bytes(cmd->offset - 1));
-	printk(KERN_ERR "stream link @ %p\n", cmd->vaddr + to_bytes(cmd->offset - 1));
-
-	/* TODO: remove later */
-	if (unlikely(drm_debug & DRM_UT_CORE))
-		etnaviv_buffer_dump(gpu, cmd, submit->cmd.size);
-
-	/* change ll to NOP */
-	printk(KERN_ERR "link op: %p\n", buffer->last_wait);
-	printk(KERN_ERR "link addr: %p\n", buffer->last_wait + 1);
-	printk(KERN_ERR "addr: 0x%llx\n", (u64)cmd->paddr);
-	printk(KERN_ERR "back: 0x%llx\n", (u64)buffer->paddr + to_bytes(back));
-	printk(KERN_ERR "event: %d\n", event);
-
 	/* change WAIT into a LINK command */
-	i = VIV_FE_LINK_HEADER_OP_LINK | VIV_FE_LINK_HEADER_PREFETCH(submit->cmd.size * 2);
-	*(buffer->last_wait + 1) = cmd->paddr;
+	i = VIV_FE_LINK_HEADER_OP_LINK | VIV_FE_LINK_HEADER_PREFETCH(2);
+	*(last_wait + 1) = buffer->paddr + to_bytes(ring_jump);
 	mb();	/* first make sure the GPU sees the address part */
-	*(buffer->last_wait) = i;
-	mb();	/* followed by the actual LINK opcode*/
-
-	etnaviv_buffer_dump(gpu, buffer, 0x50);
+	*(last_wait) = i;
+	mb();	/* followed by the actual LINK opcode */
 }

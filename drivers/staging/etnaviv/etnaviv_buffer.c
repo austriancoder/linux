@@ -156,7 +156,6 @@ void etnaviv_buffer_queue(struct etnaviv_gpu *gpu, unsigned int event, struct et
 {
 	struct etnaviv_gem_object *buffer = to_etnaviv_bo(gpu->buffer);
 	struct etnaviv_gem_object *cmd = submit->cmd.obj;
-	u32 *lw = buffer->vaddr + to_bytes(buffer->offset - 4);
 	u32 back;
 	u32 i;
 
@@ -186,18 +185,18 @@ void etnaviv_buffer_queue(struct etnaviv_gpu *gpu, unsigned int event, struct et
 		etnaviv_buffer_dump(gpu, cmd, submit->cmd.size);
 
 	/* change ll to NOP */
-	printk(KERN_ERR "link op: %p\n", lw);
-	printk(KERN_ERR "link addr: %p\n", lw + 1);
+	printk(KERN_ERR "link op: %p\n", buffer->last_wait);
+	printk(KERN_ERR "link addr: %p\n", buffer->last_wait + 1);
 	printk(KERN_ERR "addr: 0x%llx\n", (u64)cmd->paddr);
 	printk(KERN_ERR "back: 0x%llx\n", (u64)buffer->paddr + to_bytes(back));
 	printk(KERN_ERR "event: %d\n", event);
 
-	/* Change WAIT into a LINK command; write the address first. */
+	/* change WAIT into a LINK command */
 	i = VIV_FE_LINK_HEADER_OP_LINK | VIV_FE_LINK_HEADER_PREFETCH(submit->cmd.size * 2);
-	*(lw + 1) = cmd->paddr;
-	mb();
-	*(lw)= i;
-	mb();
+	*(buffer->last_wait + 1) = cmd->paddr;
+	mb();	/* first make sure the GPU sees the address part */
+	*(buffer->last_wait) = i;
+	mb();	/* followed by the actual LINK opcode*/
 
 	etnaviv_buffer_dump(gpu, buffer, 0x50);
 }

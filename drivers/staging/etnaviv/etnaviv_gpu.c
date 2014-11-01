@@ -332,7 +332,7 @@ int etnaviv_gpu_init(struct etnaviv_gpu *gpu)
 	 * and have separate page tables per context.  For now, to keep things
 	 * simple and to get something working, just use a single address space:
 	 */
-	gpu->mmuv1 = gpu->identity.minor_features1 & chipMinorFeatures1_MMU_VERSION;
+	gpu->mmuv1 = !(gpu->identity.minor_features1 & chipMinorFeatures1_MMU_VERSION);
 	dev_dbg(gpu->dev->dev, "mmuv1: %d\n", gpu->mmuv1);
 
 	if (gpu->mmuv1)

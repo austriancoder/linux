@@ -181,7 +181,7 @@ void etnaviv_buffer_queue(struct etnaviv_gpu *gpu, unsigned int event, struct et
 
 	/* patch cmd buffer */
 	cmd->offset = submit->cmd.size;
-	CMD_LINK(cmd, 2, buffer->paddr + to_bytes(buffer->offset));
+	CMD_LINK(cmd, 4, buffer->paddr + to_bytes(buffer->offset));
 
 	/* fix prefetch value in 'ring'-buffer */
 	prefetch = cmd->offset;

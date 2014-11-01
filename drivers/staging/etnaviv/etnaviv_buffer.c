@@ -123,6 +123,24 @@ static void etnaviv_cmd_select_pipe(struct etnaviv_gem_object *buffer, u8 pipe)
 	CMD_LOAD_STATE(buffer, VIVS_GL_PIPE_SELECT, VIVS_GL_PIPE_SELECT_PIPE(pipe));
 }
 
+static int etnaviv_cmd_mmu_flush(struct etnaviv_gem_object *buffer)
+{
+	int words_used = 0;
+
+	if (buffer->gpu->mmuv1) {
+		CMD_LOAD_STATE(buffer, VIVS_GL_FLUSH_MMU,
+				VIVS_GL_FLUSH_MMU_FLUSH_FEMMU |
+				VIVS_GL_FLUSH_MMU_FLUSH_PEMMU);
+
+		words_used = 2;
+	} else {
+		/* TODO */
+	}
+
+	return words_used;
+}
+
+
 u32 etnaviv_buffer_init(struct etnaviv_gpu *gpu)
 {
 	struct etnaviv_gem_object *buffer = to_etnaviv_bo(gpu->buffer);
@@ -146,12 +164,16 @@ void etnaviv_buffer_queue(struct etnaviv_gpu *gpu, unsigned int event, struct et
 	u32 ring_jump, i;
 	u32 *fixup, *last_wait;
 	u16 prefetch;
+	u16 mmu_flush_words = 0;
 
 	/* store start of the new queuing commands */
 	ring_jump = buffer->offset;
 
 	/* we need to store the current last_wait locally */
 	last_wait = buffer->last_wait;
+
+	if (0 /* TODO */)
+		mmu_flush_words = etnaviv_cmd_mmu_flush(buffer);
 
 	/* link to cmd buffer - we need to patch prefetch value later */
 	CMD_LINK(buffer, 0, cmd->paddr);
@@ -174,7 +196,9 @@ void etnaviv_buffer_queue(struct etnaviv_gpu *gpu, unsigned int event, struct et
 	CMD_LINK(buffer, 2, buffer->paddr + to_bytes(buffer->offset - 1));
 
 	/* change WAIT into a LINK command */
-	i = VIV_FE_LINK_HEADER_OP_LINK | VIV_FE_LINK_HEADER_PREFETCH(2);
+	i = VIV_FE_LINK_HEADER_OP_LINK |
+			VIV_FE_LINK_HEADER_PREFETCH(2 + mmu_flush_words);
+
 	*(last_wait + 1) = buffer->paddr + to_bytes(ring_jump);
 	mb();	/* first make sure the GPU sees the address part */
 	*(last_wait) = i;

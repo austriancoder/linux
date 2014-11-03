@@ -33,6 +33,11 @@ static inline u32 to_bytes(u32 words)
 	return words * 4;
 }
 
+static inline u16 to_prefetch(u32 words)
+{
+	return words / 2;
+}
+
 static inline void OUT(struct etnaviv_gem_object *buffer, uint32_t data)
 {
 	u32 *vaddr = (u32 *)buffer->vaddr;
@@ -82,8 +87,10 @@ static inline void CMD_WAIT(struct etnaviv_gem_object *buffer)
 	OUT(buffer, VIV_FE_WAIT_HEADER_OP_WAIT | 200);
 }
 
-static inline void CMD_LINK(struct etnaviv_gem_object *buffer, u16 prefetch, u32 address)
+static inline void CMD_LINK(struct etnaviv_gem_object *buffer, u32 words, u32 address)
 {
+	u16 prefetch = to_prefetch(words);
+
 	buffer_reserve(buffer, 2);
 
 	OUT(buffer, VIV_FE_LINK_HEADER_OP_LINK | VIV_FE_LINK_HEADER_PREFETCH(prefetch));
@@ -153,7 +160,7 @@ u32 etnaviv_buffer_init(struct etnaviv_gpu *gpu)
 	etnaviv_cmd_select_pipe(buffer, gpu->pipe);
 
 	CMD_WAIT(buffer);
-	CMD_LINK(buffer, 2, buffer->paddr + to_bytes(buffer->offset - 1));
+	CMD_LINK(buffer, 4, buffer->paddr + to_bytes(buffer->offset - 1));
 
 	return buffer->offset;
 }
@@ -181,10 +188,10 @@ void etnaviv_buffer_queue(struct etnaviv_gpu *gpu, unsigned int event, struct et
 
 	/* patch cmd buffer */
 	cmd->offset = submit->cmd.size;
-	CMD_LINK(cmd, 4, buffer->paddr + to_bytes(buffer->offset));
+	CMD_LINK(cmd, 6, buffer->paddr + to_bytes(buffer->offset));
 
 	/* fix prefetch value in 'ring'-buffer */
-	prefetch = cmd->offset;
+	prefetch = to_prefetch(cmd->offset);
 	fixup = (u32 *)buffer->vaddr + buffer->offset - 2;
 	*fixup = VIV_FE_LINK_HEADER_OP_LINK | VIV_FE_LINK_HEADER_PREFETCH(prefetch);
 
@@ -194,11 +201,12 @@ void etnaviv_buffer_queue(struct etnaviv_gpu *gpu, unsigned int event, struct et
 
 	/* append WAIT/LINK to 'ring'-buffer */
 	CMD_WAIT(buffer);
-	CMD_LINK(buffer, 2, buffer->paddr + to_bytes(buffer->offset - 1));
+	CMD_LINK(buffer, 4, buffer->paddr + to_bytes(buffer->offset - 1));
 
 	/* change WAIT into a LINK command */
+	prefetch = to_prefetch(2 + mmu_flush_words);
 	i = VIV_FE_LINK_HEADER_OP_LINK |
-			VIV_FE_LINK_HEADER_PREFETCH(2 + mmu_flush_words);
+			VIV_FE_LINK_HEADER_PREFETCH(prefetch);
 
 	*(last_wait + 1) = buffer->paddr + to_bytes(ring_jump);
 	mb();	/* first make sure the GPU sees the address part */

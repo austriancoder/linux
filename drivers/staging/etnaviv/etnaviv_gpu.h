@@ -91,7 +91,7 @@ struct etnaviv_gpu {
 	bool event_used[30];
 	uint32_t event_to_fence[30];
 	struct completion event_free;
-	struct spinlock event_spinlock;
+	spinlock_t event_spinlock;
 
 	/* list of GEM active objects: */
 	struct list_head active_list;
@@ -137,7 +137,8 @@ static inline u32 gpu_read(struct etnaviv_gpu *gpu, u32 reg)
 	return etnaviv_readl(gpu->mmio + reg);
 }
 
-int etnaviv_gpu_get_param(struct etnaviv_gpu *gpu, uint32_t param, uint64_t *value);
+int etnaviv_gpu_get_param(struct etnaviv_gpu *gpu, uint32_t param,
+	uint64_t *value);
 
 int etnaviv_gpu_init(struct etnaviv_gpu *gpu);
 int etnaviv_gpu_pm_suspend(struct etnaviv_gpu *gpu);
@@ -148,8 +149,8 @@ void etnaviv_gpu_debugfs(struct etnaviv_gpu *gpu, struct seq_file *m);
 #endif
 
 void etnaviv_gpu_retire(struct etnaviv_gpu *gpu);
-int etnaviv_gpu_submit(struct etnaviv_gpu *gpu, struct etnaviv_gem_submit *submit,
-		struct etnaviv_file_private *ctx);
+int etnaviv_gpu_submit(struct etnaviv_gpu *gpu,
+	struct etnaviv_gem_submit *submit, struct etnaviv_file_private *ctx);
 
 extern struct platform_driver etnaviv_gpu_driver;
 

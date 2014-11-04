@@ -41,34 +41,42 @@ static inline u16 to_prefetch(u32 words)
 static inline void OUT(struct etnaviv_gem_object *buffer, uint32_t data)
 {
 	u32 *vaddr = (u32 *)buffer->vaddr;
-	BUG_ON(to_bytes(buffer->offset) >= buffer->base.size);
 
+	BUG_ON(to_bytes(buffer->offset) >= buffer->base.size);
 	vaddr[buffer->offset++] = data;
 }
 
 static inline void buffer_reserve(struct etnaviv_gem_object *buffer, u32 size)
 {
+	size_t size;
+
 	buffer->offset = ALIGN(buffer->offset, 2);
 
 	if (!buffer->is_ring_buffer)
 		return;
 
-	if (to_bytes(buffer->offset + size + CMD_LINK_NUM_WORDS) <= buffer->base.size)
+	size = to_bytes(buffer->offset + size + CMD_LINK_NUM_WORDS);
+	if (size <= buffer->base.size)
 		return;
 
 	/* jump to the start of the buffer */
-	OUT(buffer, VIV_FE_LINK_HEADER_OP_LINK | VIV_FE_LINK_HEADER_PREFETCH(0xffffffff /* TODO */));
+	OUT(buffer, VIV_FE_LINK_HEADER_OP_LINK |
+		VIV_FE_LINK_HEADER_PREFETCH(0xffffffff /* TODO */));
 	OUT(buffer, buffer->paddr);
 	buffer->offset = 0;
 }
 
-static inline void CMD_LOAD_STATE(struct etnaviv_gem_object *buffer, u32 reg, u32 value)
+static inline void CMD_LOAD_STATE(struct etnaviv_gem_object *buffer,
+	u32 reg, u32 value)
 {
+	u32 index = reg >> VIV_FE_LOAD_STATE_HEADER_OFFSET__SHR;
+
 	buffer_reserve(buffer, 2);
 
 	/* write a register via cmd stream */
-	OUT(buffer, VIV_FE_LOAD_STATE_HEADER_OP_LOAD_STATE | VIV_FE_LOAD_STATE_HEADER_COUNT(1) |
-			VIV_FE_LOAD_STATE_HEADER_OFFSET(reg >> VIV_FE_LOAD_STATE_HEADER_OFFSET__SHR));
+	OUT(buffer, VIV_FE_LOAD_STATE_HEADER_OP_LOAD_STATE |
+		VIV_FE_LOAD_STATE_HEADER_COUNT(1) |
+		VIV_FE_LOAD_STATE_HEADER_OFFSET(index));
 	OUT(buffer, value);
 }
 
@@ -87,22 +95,26 @@ static inline void CMD_WAIT(struct etnaviv_gem_object *buffer)
 	OUT(buffer, VIV_FE_WAIT_HEADER_OP_WAIT | 200);
 }
 
-static inline void CMD_LINK(struct etnaviv_gem_object *buffer, u32 words, u32 address)
+static inline void CMD_LINK(struct etnaviv_gem_object *buffer,
+	u32 words, u32 address)
 {
 	u16 prefetch = to_prefetch(words);
 
 	buffer_reserve(buffer, 2);
 
-	OUT(buffer, VIV_FE_LINK_HEADER_OP_LINK | VIV_FE_LINK_HEADER_PREFETCH(prefetch));
+	OUT(buffer, VIV_FE_LINK_HEADER_OP_LINK |
+		VIV_FE_LINK_HEADER_PREFETCH(prefetch));
 	OUT(buffer, address);
 }
 
-static inline void CMD_STALL(struct etnaviv_gem_object *buffer, u32 from, u32 to)
+static inline void CMD_STALL(struct etnaviv_gem_object *buffer,
+	u32 from, u32 to)
 {
 	buffer_reserve(buffer, 2);
 
 	OUT(buffer, VIV_FE_STALL_HEADER_OP_STALL);
-	OUT(buffer, VIV_FE_STALL_TOKEN_FROM(from) | VIV_FE_STALL_TOKEN_TO(to));
+	OUT(buffer, VIV_FE_STALL_TOKEN_FROM(from) |
+		VIV_FE_STALL_TOKEN_TO(to));
 }
 
 /*
@@ -120,14 +132,15 @@ static void etnaviv_cmd_select_pipe(struct etnaviv_gem_object *buffer, u8 pipe)
 		flush = VIVS_GL_FLUSH_CACHE_TEXTURE;
 
 	stall = VIVS_GL_SEMAPHORE_TOKEN_FROM(SYNC_RECIPIENT_FE) |
-			VIVS_GL_SEMAPHORE_TOKEN_TO(SYNC_RECIPIENT_PE);
+		VIVS_GL_SEMAPHORE_TOKEN_TO(SYNC_RECIPIENT_PE);
 
 	CMD_LOAD_STATE(buffer, VIVS_GL_FLUSH_CACHE, flush);
 	CMD_LOAD_STATE(buffer, VIVS_GL_SEMAPHORE_TOKEN, stall);
 
 	CMD_STALL(buffer, SYNC_RECIPIENT_FE, SYNC_RECIPIENT_PE);
 
-	CMD_LOAD_STATE(buffer, VIVS_GL_PIPE_SELECT, VIVS_GL_PIPE_SELECT_PIPE(pipe));
+	CMD_LOAD_STATE(buffer, VIVS_GL_PIPE_SELECT,
+		       VIVS_GL_PIPE_SELECT_PIPE(pipe));
 }
 
 static int etnaviv_cmd_mmu_flush(struct etnaviv_gem_object *buffer)
@@ -165,7 +178,8 @@ u32 etnaviv_buffer_init(struct etnaviv_gpu *gpu)
 	return buffer->offset;
 }
 
-void etnaviv_buffer_queue(struct etnaviv_gpu *gpu, unsigned int event, struct etnaviv_gem_submit *submit)
+void etnaviv_buffer_queue(struct etnaviv_gpu *gpu, unsigned int event,
+	struct etnaviv_gem_submit *submit)
 {
 	struct etnaviv_gem_object *buffer = to_etnaviv_bo(gpu->buffer);
 	struct etnaviv_gem_object *cmd = submit->cmd.obj;
@@ -193,7 +207,8 @@ void etnaviv_buffer_queue(struct etnaviv_gpu *gpu, unsigned int event, struct et
 	/* fix prefetch value in 'ring'-buffer */
 	prefetch = to_prefetch(cmd->offset);
 	fixup = (u32 *)buffer->vaddr + buffer->offset - 2;
-	*fixup = VIV_FE_LINK_HEADER_OP_LINK | VIV_FE_LINK_HEADER_PREFETCH(prefetch);
+	*fixup = VIV_FE_LINK_HEADER_OP_LINK |
+		VIV_FE_LINK_HEADER_PREFETCH(prefetch);
 
 	/* trigger event */
 	CMD_LOAD_STATE(buffer, VIVS_GL_EVENT,

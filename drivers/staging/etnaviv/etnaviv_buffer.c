@@ -17,6 +17,7 @@
 
 #include "etnaviv_gpu.h"
 #include "etnaviv_gem.h"
+#include "etnaviv_mmu.h"
 
 #include "common.xml.h"
 #include "state.xml.h"
@@ -48,15 +49,15 @@ static inline void OUT(struct etnaviv_gem_object *buffer, uint32_t data)
 
 static inline void buffer_reserve(struct etnaviv_gem_object *buffer, u32 size)
 {
-	size_t size;
+	size_t offset;
 
 	buffer->offset = ALIGN(buffer->offset, 2);
 
 	if (!buffer->is_ring_buffer)
 		return;
 
-	size = to_bytes(buffer->offset + size + CMD_LINK_NUM_WORDS);
-	if (size <= buffer->base.size)
+	offset = to_bytes(buffer->offset + size + CMD_LINK_NUM_WORDS);
+	if (offset <= buffer->base.size)
 		return;
 
 	/* jump to the start of the buffer */

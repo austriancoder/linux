@@ -194,7 +194,7 @@ void etnaviv_buffer_queue(struct etnaviv_gpu *gpu, unsigned int event,
 	/* we need to store the current last_wait locally */
 	last_wait = buffer->last_wait;
 
-	if (0 /* TODO */)
+	if (gpu->mmu->need_flush)
 		mmu_flush_words = etnaviv_cmd_mmu_flush(buffer);
 
 	/* link to cmd buffer - we need to patch prefetch value later */

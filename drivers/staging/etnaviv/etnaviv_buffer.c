@@ -21,6 +21,7 @@
 
 #include "common.xml.h"
 #include "state.xml.h"
+#include "state_hi.xml.h"
 #include "cmdstream.xml.h"
 
 /*
@@ -155,7 +156,38 @@ static int etnaviv_cmd_mmu_flush(struct etnaviv_gem_object *buffer)
 
 		words_used = 2;
 	} else {
-		/* TODO */
+		/* flush cache */
+		CMD_LOAD_STATE(buffer, VIVS_GL_FLUSH_CACHE,
+				VIVS_GL_FLUSH_CACHE_COLOR |
+				VIVS_GL_FLUSH_CACHE_TEXTURE |
+				VIVS_GL_FLUSH_CACHE_PE2D |
+				VIVS_GL_FLUSH_CACHE_TEXTUREVS |
+				VIVS_GL_FLUSH_CACHE_SHADER_L1 |
+				VIVS_GL_FLUSH_CACHE_SHADER_L2
+				);
+
+		/* arm the PE-FE Semaphore */
+		CMD_LOAD_STATE(buffer, VIVS_GL_SEMAPHORE_TOKEN,
+				VIVS_GL_SEMAPHORE_TOKEN_FROM(SYNC_RECIPIENT_FE) |
+				VIVS_GL_SEMAPHORE_TOKEN_TO(SYNC_RECIPIENT_PE));
+
+		/* STALL FE until PE is done flushing */
+		CMD_STALL(buffer, SYNC_RECIPIENT_FE, SYNC_RECIPIENT_PE);
+
+		/* flush MMU cache */
+		CMD_LOAD_STATE(buffer, VIVS_MMUv2_CONFIGURATION,
+				VIVS_MMUv2_CONFIGURATION_FLUSH__MASK |
+				VIVS_MMUv2_CONFIGURATION_FLUSH_MASK);
+
+		/* arm the PE-FE Semaphore */
+		CMD_LOAD_STATE(buffer, VIVS_GL_SEMAPHORE_TOKEN,
+				VIVS_GL_SEMAPHORE_TOKEN_FROM(SYNC_RECIPIENT_FE) |
+				VIVS_GL_SEMAPHORE_TOKEN_TO(SYNC_RECIPIENT_PE));
+
+		/* STALL FE until PE is done flushing */
+		CMD_STALL(buffer, SYNC_RECIPIENT_FE, SYNC_RECIPIENT_PE);
+
+		words_used = 12;
 	}
 
 	return words_used;

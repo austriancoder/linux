@@ -397,8 +397,8 @@ int etnaviv_gpu_init(struct etnaviv_gpu *gpu)
 	/* Setup event management */
 	spin_lock_init(&gpu->event_spinlock);
 	init_completion(&gpu->event_free);
-	for (i = 0; i < ARRAY_SIZE(gpu->event_used); i++) {
-		gpu->event_used[i] = false;
+	for (i = 0; i < ARRAY_SIZE(gpu->event); i++) {
+		gpu->event[i].used = false;
 		complete(&gpu->event_free);
 	}
 
@@ -727,9 +727,9 @@ static unsigned int event_alloc(struct etnaviv_gpu *gpu)
 	spin_lock_irqsave(&gpu->event_spinlock, flags);
 
 	/* find first free event */
-	for (i = 0; i < ARRAY_SIZE(gpu->event_used); i++) {
-		if (gpu->event_used[i] == false) {
-			gpu->event_used[i] = true;
+	for (i = 0; i < ARRAY_SIZE(gpu->event); i++) {
+		if (gpu->event[i].used == false) {
+			gpu->event[i].used = true;
 			event = i;
 			break;
 		}
@@ -746,12 +746,12 @@ static void event_free(struct etnaviv_gpu *gpu, unsigned int event)
 
 	spin_lock_irqsave(&gpu->event_spinlock, flags);
 
-	if (gpu->event_used[event] == false) {
+	if (gpu->event[event].used == false) {
 		dev_warn(gpu->dev->dev, "event %u is already marked as free",
 			event);
 		spin_unlock_irqrestore(&gpu->event_spinlock, flags);
 	} else {
-		gpu->event_used[event] = false;
+		gpu->event[event].used = false;
 		spin_unlock_irqrestore(&gpu->event_spinlock, flags);
 
 		complete(&gpu->event_free);
@@ -830,7 +830,7 @@ int etnaviv_gpu_submit(struct etnaviv_gpu *gpu,
 		goto fail;
 	}
 
-	gpu->event_to_fence[event] = submit->fence;
+	gpu->event[event].fence = submit->fence;
 
 	etnaviv_buffer_queue(gpu, event, submit);
 
@@ -886,7 +886,7 @@ static irqreturn_t irq_handler(int irq, void *data)
 			uint8_t event = __fls(intr);
 
 			dev_dbg(gpu->dev->dev, "event %u\n", event);
-			gpu->retired_fence = gpu->event_to_fence[event];
+			gpu->retired_fence = gpu->event[event].fence;
 			event_free(gpu, event);
 			etnaviv_gpu_retire(gpu);
 		}

@@ -1,7 +1,7 @@
 
 config DRM_ETNAVIV
 	tristate "etnaviv DRM"
-	depends on DRM
+	depends on DRM && IOMMU_SUPPORT
 	select SHMEM
 	select TMPFS
 	select IOMMU_API

@@ -827,7 +827,7 @@ static const struct file_operations fops = {
 	.poll               = drm_poll,
 	.read               = drm_read,
 	.llseek             = no_llseek,
-	.mmap               = vivante_gem_mmap,
+	.mmap               = msm_gem_mmap,
 };
 
 static struct drm_driver msm_driver = {

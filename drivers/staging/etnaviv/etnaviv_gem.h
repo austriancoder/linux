@@ -20,6 +20,7 @@
 
 #include <linux/reservation.h>
 #include "etnaviv_drv.h"
+#include "drm_gem.h"
 
 struct etnaviv_gem_ops;
 

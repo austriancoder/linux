@@ -21,6 +21,7 @@
 #include "etnaviv_drv.h"
 #include "etnaviv_gpu.h"
 #include "etnaviv_mmu.h"
+#include "etnaviv_gem.h"
 
 void etnaviv_register_mmu(struct drm_device *dev, struct etnaviv_iommu *mmu)
 {
@@ -513,6 +514,7 @@ static struct drm_driver etnaviv_drm_driver = {
 	.unload             = etnaviv_unload,
 	.open               = etnaviv_open,
 	.preclose           = etnaviv_preclose,
+	.set_busid          = drm_platform_set_busid,
 	.gem_free_object    = etnaviv_gem_free_object,
 	.gem_vm_ops         = &vm_ops,
 	.dumb_create        = msm_gem_dumb_create,

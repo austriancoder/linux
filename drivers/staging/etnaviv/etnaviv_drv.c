@@ -313,7 +313,7 @@ static int show_locked(struct seq_file *m, void *arg)
 	return ret;
 }
 
-static struct drm_info_list ETNAVIV_debugfs_list[] = {
+static struct drm_info_list etnaviv_debugfs_list[] = {
 		{ "gpu", show_locked, 0, etnaviv_gpu_show},
 		{ "gem", show_locked, 0, etnaviv_gem_show},
 		{  "mm", show_locked, 0, etnaviv_mm_show },
@@ -326,12 +326,12 @@ static int etnaviv_debugfs_init(struct drm_minor *minor)
 	struct drm_device *dev = minor->dev;
 	int ret;
 
-	ret = drm_debugfs_create_files(ETNAVIV_debugfs_list,
-			ARRAY_SIZE(ETNAVIV_debugfs_list),
+	ret = drm_debugfs_create_files(etnaviv_debugfs_list,
+			ARRAY_SIZE(etnaviv_debugfs_list),
 			minor->debugfs_root, minor);
 
 	if (ret) {
-		dev_err(dev->dev, "could not install ETNAVIV_debugfs_list\n");
+		dev_err(dev->dev, "could not install etnaviv_debugfs_list\n");
 		return ret;
 	}
 
@@ -340,8 +340,8 @@ static int etnaviv_debugfs_init(struct drm_minor *minor)
 
 static void etnaviv_debugfs_cleanup(struct drm_minor *minor)
 {
-	drm_debugfs_remove_files(ETNAVIV_debugfs_list,
-			ARRAY_SIZE(ETNAVIV_debugfs_list), minor);
+	drm_debugfs_remove_files(etnaviv_debugfs_list,
+			ARRAY_SIZE(etnaviv_debugfs_list), minor);
 }
 #endif
 

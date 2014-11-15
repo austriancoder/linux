@@ -208,7 +208,7 @@ u32 etnaviv_buffer_init(struct etnaviv_gpu *gpu)
 	CMD_WAIT(buffer);
 	CMD_LINK(buffer, 4, buffer->paddr + to_bytes(buffer->offset - 1));
 
-	return buffer->offset;
+	return to_prefetch(buffer->offset);
 }
 
 void etnaviv_buffer_queue(struct etnaviv_gpu *gpu, unsigned int event,

@@ -345,7 +345,7 @@ static void etnaviv_hw_reset(struct etnaviv_gpu *gpu)
 int etnaviv_gpu_init(struct etnaviv_gpu *gpu)
 {
 	int ret, i;
-	u32 words; /* 32 bit words */
+	u32 prefetch;
 	struct iommu_domain *iommu;
 
 	etnaviv_hw_identify(gpu);
@@ -402,17 +402,14 @@ int etnaviv_gpu_init(struct etnaviv_gpu *gpu)
 	}
 
 	/* Start command processor */
-	words = etnaviv_buffer_init(gpu);
-
-	/* convert number of 32 bit words to number of 64 bit words */
-	words = ALIGN(words, 2) / 2;
+	prefetch = etnaviv_buffer_init(gpu);
 
 	gpu_write(gpu, VIVS_HI_INTR_ENBL, ~0U);
 	gpu_write(gpu, VIVS_FE_COMMAND_ADDRESS,
 		  etnaviv_gem_paddr_locked(gpu->buffer));
 	gpu_write(gpu, VIVS_FE_COMMAND_CONTROL,
 		  VIVS_FE_COMMAND_CONTROL_ENABLE |
-		  VIVS_FE_COMMAND_CONTROL_PREFETCH(words));
+		  VIVS_FE_COMMAND_CONTROL_PREFETCH(prefetch));
 
 	return 0;
 

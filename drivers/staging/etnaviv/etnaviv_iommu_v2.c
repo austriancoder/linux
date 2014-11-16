@@ -235,6 +235,7 @@ static struct iommu_ops etnaviv_iommu_v2_ops = {
 struct iommu_domain *etnaviv_iommu_v2_domain_alloc(struct etnaviv_gpu *gpu)
 {
 	struct iommu_domain *domain;
+	struct etnaviv_iommu_v2_domain *etnaviv_domain;
 	int ret;
 
 	domain = kzalloc(sizeof(*domain), GFP_KERNEL);
@@ -246,6 +247,10 @@ struct iommu_domain *etnaviv_iommu_v2_domain_alloc(struct etnaviv_gpu *gpu)
 	ret = domain->ops->domain_init(domain);
 	if (ret)
 		goto out_free;
+
+	/* store page table address */
+	etnaviv_domain = domain->priv;
+	gpu->pgtable = etnaviv_domain->mtlb.paddr;
 
 	return domain;
 

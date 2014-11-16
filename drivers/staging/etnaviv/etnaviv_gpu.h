@@ -110,6 +110,7 @@ struct etnaviv_gpu {
 	int irq;
 
 	struct etnaviv_iommu *mmu;
+	uint32_t pgtable;
 	bool mmuv1;
 
 	/* Power Control: */

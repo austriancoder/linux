@@ -15,6 +15,7 @@
  * this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include <linux/dma-buf.h>
 #include "etnaviv_drv.h"
 #include "etnaviv_gem.h"
 
@@ -39,9 +40,9 @@ void msm_gem_prime_vunmap(struct drm_gem_object *obj, void *vaddr)
 }
 
 struct drm_gem_object *msm_gem_prime_import_sg_table(struct drm_device *dev,
-		size_t size, struct sg_table *sg)
+		struct dma_buf_attachment *attach, struct sg_table *sg)
 {
-	return msm_gem_import(dev, size, sg);
+	return msm_gem_import(dev, attach->dmabuf->size, sg);
 }
 
 int msm_gem_prime_pin(struct drm_gem_object *obj)

@@ -123,7 +123,7 @@ static inline void CMD_STALL(struct etnaviv_gem_object *buffer,
  * High level commands:
  */
 
-static void etnaviv_cmd_select_pipe(struct etnaviv_gem_object *buffer, u8 pipe)
+static void cmd_select_pipe(struct etnaviv_gem_object *buffer, u8 pipe)
 {
 	u32 flush;
 	u32 stall;
@@ -145,7 +145,7 @@ static void etnaviv_cmd_select_pipe(struct etnaviv_gem_object *buffer, u8 pipe)
 		       VIVS_GL_PIPE_SELECT_PIPE(pipe));
 }
 
-static int etnaviv_cmd_mmu_flush(struct etnaviv_gem_object *buffer)
+static int cmd_mmu_flush(struct etnaviv_gem_object *buffer)
 {
 	int words_used = 0;
 
@@ -203,7 +203,7 @@ u32 etnaviv_buffer_init(struct etnaviv_gpu *gpu)
 	buffer->is_ring_buffer = true;
 	buffer->gpu = gpu;
 
-	etnaviv_cmd_select_pipe(buffer, gpu->pipe);
+	cmd_select_pipe(buffer, gpu->pipe);
 
 	CMD_WAIT(buffer);
 	CMD_LINK(buffer, 4, buffer->paddr + to_bytes(buffer->offset - 1));
@@ -228,7 +228,7 @@ void etnaviv_buffer_queue(struct etnaviv_gpu *gpu, unsigned int event,
 	last_wait = buffer->last_wait;
 
 	if (gpu->mmu->need_flush)
-		mmu_flush_words = etnaviv_cmd_mmu_flush(buffer);
+		mmu_flush_words = cmd_mmu_flush(buffer);
 
 	/* link to cmd buffer - we need to patch prefetch value later */
 	CMD_LINK(buffer, 0, cmd->paddr);

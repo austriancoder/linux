@@ -111,7 +111,6 @@ struct etnaviv_gpu {
 
 	struct etnaviv_iommu *mmu;
 	uint32_t pgtable;
-	bool mmuv1;
 
 	/* Power Control: */
 #if 0

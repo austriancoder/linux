@@ -38,7 +38,6 @@
 #include <drm/drm_gem.h>
 
 struct etnaviv_gpu;
-struct etnaviv_mmu;
 struct etnaviv_gem_submit;
 
 struct etnaviv_file_private {

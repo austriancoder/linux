@@ -149,7 +149,7 @@ static int etnaviv_cmd_mmu_flush(struct etnaviv_gem_object *buffer)
 {
 	int words_used = 0;
 
-	if (buffer->gpu->mmuv1) {
+	if (buffer->gpu->mmu->version == ETNAVIV_IOMMU_V1) {
 		CMD_LOAD_STATE(buffer, VIVS_GL_FLUSH_MMU,
 				VIVS_GL_FLUSH_MMU_FLUSH_FEMMU |
 				VIVS_GL_FLUSH_MMU_FLUSH_PEMMU);

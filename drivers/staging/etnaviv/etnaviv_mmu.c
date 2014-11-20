@@ -98,7 +98,7 @@ void etnaviv_iommu_destroy(struct etnaviv_iommu *mmu)
 }
 
 struct etnaviv_iommu *etnaviv_iommu_new(struct drm_device *dev,
-	struct iommu_domain *domain)
+	struct iommu_domain *domain, enum etnaviv_iommu_version version)
 {
 	struct etnaviv_iommu *mmu;
 
@@ -108,6 +108,7 @@ struct etnaviv_iommu *etnaviv_iommu_new(struct drm_device *dev,
 
 	mmu->domain = domain;
 	mmu->dev = dev;
+	mmu->version = version;
 
 	drm_mm_init(&mmu->mm, domain->geometry.aperture_start,
 		    domain->geometry.aperture_end -

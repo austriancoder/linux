@@ -20,9 +20,16 @@
 
 #include <linux/iommu.h>
 
+enum etnaviv_iommu_version {
+	ETNAVIV_IOMMU_V1 = 0,
+	ETNAVIV_IOMMU_V2,
+};
+
 struct etnaviv_iommu {
 	struct drm_device *dev;
 	struct iommu_domain *domain;
+
+	enum etnaviv_iommu_version version;
 
 	/* memory manager for GPU address area */
 	struct drm_mm mm;
@@ -38,6 +45,6 @@ int etnaviv_iommu_unmap(struct etnaviv_iommu *iommu, uint32_t iova,
 void etnaviv_iommu_destroy(struct etnaviv_iommu *iommu);
 
 struct etnaviv_iommu *etnaviv_iommu_new(struct drm_device *dev,
-	struct iommu_domain *domain);
+	struct iommu_domain *domain, enum etnaviv_iommu_version version);
 
 #endif /* __ETNAVIV_MMU_H__ */

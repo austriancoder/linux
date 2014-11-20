@@ -346,7 +346,9 @@ int etnaviv_gpu_init(struct etnaviv_gpu *gpu)
 {
 	int ret, i;
 	u32 prefetch;
+	bool mmuv1;
 	struct iommu_domain *iommu;
+	enum etnaviv_iommu_version version;
 
 	etnaviv_hw_identify(gpu);
 	etnaviv_hw_reset(gpu);
@@ -362,13 +364,15 @@ int etnaviv_gpu_init(struct etnaviv_gpu *gpu)
 	 * and have separate page tables per context.  For now, to keep things
 	 * simple and to get something working, just use a single address space:
 	 */
-	gpu->mmuv1 = !(gpu->identity.minor_features1 & chipMinorFeatures1_MMU_VERSION);
-	dev_dbg(gpu->dev, "mmuv1: %d\n", gpu->mmuv1);
+	mmuv1 = !(gpu->identity.minor_features1 & chipMinorFeatures1_MMU_VERSION);
 
-	if (gpu->mmuv1)
+	if (mmuv1) {
 		iommu = etnaviv_iommu_domain_alloc(gpu);
-	else
+		version = ETNAVIV_IOMMU_V1;
+	} else {
 		iommu = etnaviv_iommu_v2_domain_alloc(gpu);
+		version = ETNAVIV_IOMMU_V2;
+	}
 
 	if (!iommu) {
 		ret = -ENOMEM;
@@ -377,7 +381,7 @@ int etnaviv_gpu_init(struct etnaviv_gpu *gpu)
 
 	/* TODO: we will leak here memory - fix it! */
 
-	gpu->mmu = etnaviv_iommu_new(gpu->drm, iommu);
+	gpu->mmu = etnaviv_iommu_new(gpu->drm, iommu, version);
 	if (!gpu->mmu) {
 		ret = -ENOMEM;
 		goto fail;

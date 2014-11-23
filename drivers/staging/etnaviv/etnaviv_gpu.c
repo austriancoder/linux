@@ -353,6 +353,11 @@ int etnaviv_gpu_init(struct etnaviv_gpu *gpu)
 	etnaviv_hw_identify(gpu);
 	etnaviv_hw_reset(gpu);
 
+	/* set GPU AXI cache attribute to "cacheable, no allocate" */
+	gpu_write(gpu, VIVS_HI_AXI_CONFIG,
+			VIVS_HI_AXI_CONFIG_AWCACHE(2) |
+			VIVS_HI_AXI_CONFIG_ARCACHE(2));
+
 	/* set base addresses */
 	gpu_write(gpu, VIVS_MC_MEMORY_BASE_ADDR_RA, 0x0);
 	gpu_write(gpu, VIVS_MC_MEMORY_BASE_ADDR_FE, 0x0);

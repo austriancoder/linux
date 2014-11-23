@@ -222,8 +222,8 @@ static void etnaviv_hw_identify(struct etnaviv_gpu *gpu)
 		}
 	}
 
-	dev_info(gpu->dev, "model: %x\n", gpu->identity.model);
-	dev_info(gpu->dev, "revision: %x\n", gpu->identity.revision);
+	dev_info(gpu->dev, "model: %x - revision: %x\n",
+			gpu->identity.model, gpu->identity.revision);
 
 	gpu->identity.features = gpu_read(gpu, VIVS_HI_CHIP_FEATURE);
 
@@ -255,15 +255,6 @@ static void etnaviv_hw_identify(struct etnaviv_gpu *gpu)
 		gpu->identity.minor_features3 =
 				gpu_read(gpu, VIVS_HI_CHIP_MINOR_FEATURE_3);
 	}
-
-	dev_info(gpu->dev, "minor_features:  %x\n",
-		 gpu->identity.minor_features0);
-	dev_info(gpu->dev, "minor_features1: %x\n",
-		 gpu->identity.minor_features1);
-	dev_info(gpu->dev, "minor_features2: %x\n",
-		 gpu->identity.minor_features2);
-	dev_info(gpu->dev, "minor_features3: %x\n",
-		 gpu->identity.minor_features3);
 
 	etnaviv_hw_specs(gpu);
 }
@@ -460,6 +451,16 @@ void etnaviv_gpu_debugfs(struct etnaviv_gpu *gpu, struct seq_file *m)
 	u32 idle = gpu_read(gpu, VIVS_HI_IDLE_STATE);
 
 	verify_dma(gpu, &debug);
+
+	seq_puts(m, "\tfeatures\n");
+	seq_printf(m, "\t minor_features:  %x\n",
+		 gpu->identity.minor_features0);
+	seq_printf(m, "\t minor_features1: %x\n",
+		 gpu->identity.minor_features1);
+	seq_printf(m, "\t minor_features2: %x\n",
+		 gpu->identity.minor_features2);
+	seq_printf(m, "\t minor_features3: %x\n",
+		 gpu->identity.minor_features3);
 
 	seq_puts(m, "\tspecs\n");
 	seq_printf(m, "\t stream_count:  %x\n",

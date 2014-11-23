@@ -562,7 +562,8 @@ void etnaviv_gem_free_object(struct drm_gem_object *obj)
 	WARN_ON(!mutex_is_locked(&dev->struct_mutex));
 
 	/* object should not be on active list: */
-	WARN_ON(is_active(etnaviv_obj));
+	if (!etnaviv_obj->is_ring_buffer)
+		WARN_ON(is_active(etnaviv_obj));
 
 	list_del(&etnaviv_obj->mm_list);
 

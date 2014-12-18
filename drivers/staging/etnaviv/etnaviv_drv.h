@@ -114,9 +114,7 @@ void etnaviv_buffer_queue(struct etnaviv_gpu *gpu, unsigned int event,
 	struct etnaviv_gem_submit *submit);
 
 #ifdef CONFIG_DEBUG_FS
-void msm_gem_describe(struct drm_gem_object *obj, struct seq_file *m);
-void msm_gem_describe_objects(struct list_head *list, struct seq_file *m);
-void msm_framebuffer_describe(struct drm_framebuffer *fb, struct seq_file *m);
+void etnaviv_gem_describe_objects(struct list_head *list, struct seq_file *m);
 #endif
 
 void __iomem *etnaviv_ioremap(struct platform_device *pdev, const char *name,

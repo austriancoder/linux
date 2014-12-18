@@ -225,12 +225,12 @@ static int etnaviv_gem_show(struct drm_device *dev, struct seq_file *m)
 		gpu = priv->gpu[i];
 		if (gpu) {
 			seq_printf(m, "Active Objects (%s):\n", dev_name(gpu->dev));
-			msm_gem_describe_objects(&gpu->active_list, m);
+			etnaviv_gem_describe_objects(&gpu->active_list, m);
 		}
 	}
 
 	seq_puts(m, "Inactive Objects:\n");
-	msm_gem_describe_objects(&priv->inactive_list, m);
+	etnaviv_gem_describe_objects(&priv->inactive_list, m);
 
 	return 0;
 }

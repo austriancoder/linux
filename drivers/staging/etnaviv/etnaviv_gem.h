@@ -111,6 +111,8 @@ struct etnaviv_gem_submit {
 	} bos[0];
 };
 
+void etnaviv_gem_scatter_map(struct etnaviv_gem_object *etnaviv_obj);
+void etnaviv_gem_scatterlist_unmap(struct etnaviv_gem_object *etnaviv_obj);
 int etnaviv_gem_new_private(struct drm_device *dev, size_t size, uint32_t flags,
 	struct etnaviv_gem_object **res);
 

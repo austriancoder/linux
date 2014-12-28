@@ -160,11 +160,7 @@ static void etnaviv_gem_userptr_release(struct etnaviv_gem_object *etnaviv_obj)
 		 * For non-cached buffers, ensure the new pages are clean
 		 * because display controller, GPU, etc. are not coherent:
 		 */
-		if (etnaviv_obj->flags & (ETNA_BO_WC|ETNA_BO_CACHED))
-			dma_unmap_sg(etnaviv_obj->base.dev->dev,
-				     etnaviv_obj->sgt->sgl,
-				     etnaviv_obj->sgt->nents,
-				     DMA_BIDIRECTIONAL);
+		etnaviv_gem_scatterlist_unmap(etnaviv_obj);
 		sg_free_table(etnaviv_obj->sgt);
 		kfree(etnaviv_obj->sgt);
 	}

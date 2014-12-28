@@ -23,6 +23,42 @@
 #include "etnaviv_gpu.h"
 #include "etnaviv_mmu.h"
 
+void etnaviv_gem_scatter_map(struct etnaviv_gem_object *etnaviv_obj)
+{
+	struct drm_device *dev = etnaviv_obj->base.dev;
+
+	/* For non-cached buffers, ensure the new pages are clean
+	 * because display controller, GPU, etc. are not coherent:
+	 */
+	if (etnaviv_obj->flags & (ETNA_BO_WC|ETNA_BO_UNCACHED)) {
+		dma_map_sg(dev->dev, etnaviv_obj->sgt->sgl,
+			   etnaviv_obj->sgt->nents, DMA_BIDIRECTIONAL);
+	} else {
+		struct scatterlist *sg;
+		unsigned int i;
+
+		for_each_sg(etnaviv_obj->sgt->sgl, sg, etnaviv_obj->sgt->nents, i) {
+			sg_dma_address(sg) = sg_phys(sg);
+#ifdef CONFIG_NEED_SG_DMA_LENGTH
+			sg_dma_len(sg) = sg->length;
+#endif
+		}
+	}
+}
+
+void etnaviv_gem_scatterlist_unmap(struct etnaviv_gem_object *etnaviv_obj)
+{
+	struct drm_device *dev = etnaviv_obj->base.dev;
+
+	/* For non-cached buffers, ensure the new pages are clean
+	 * because display controller, GPU, etc. are not coherent:
+	 */
+	if (etnaviv_obj->flags & (ETNA_BO_WC|ETNA_BO_UNCACHED))
+		dma_unmap_sg(dev->dev, etnaviv_obj->sgt->sgl,
+			     etnaviv_obj->sgt->nents,
+			     DMA_BIDIRECTIONAL);
+}
+
 /* called with dev->struct_mutex held */
 static int etnaviv_gem_shmem_get_pages(struct etnaviv_gem_object *etnaviv_obj)
 {
@@ -48,10 +84,7 @@ static void put_pages(struct drm_gem_object *obj)
 		/* For non-cached buffers, ensure the new pages are clean
 		 * because display controller, GPU, etc. are not coherent:
 		 */
-		if (etnaviv_obj->flags & (ETNA_BO_WC|ETNA_BO_UNCACHED))
-			dma_unmap_sg(obj->dev->dev, etnaviv_obj->sgt->sgl,
-				     etnaviv_obj->sgt->nents,
-				     DMA_BIDIRECTIONAL);
+		etnaviv_gem_scatterlist_unmap(etnaviv_obj);
 		sg_free_table(etnaviv_obj->sgt);
 		kfree(etnaviv_obj->sgt);
 
@@ -92,13 +125,7 @@ struct page **etnaviv_gem_get_pages(struct drm_gem_object *obj)
 		}
 
 		etnaviv_obj->sgt = sgt;
-
-		/* For non-cached buffers, ensure the new pages are clean
-		 * because display controller, GPU, etc. are not coherent:
-		 */
-		if (etnaviv_obj->flags & (ETNA_BO_WC|ETNA_BO_UNCACHED))
-			dma_map_sg(dev->dev, etnaviv_obj->sgt->sgl,
-				   etnaviv_obj->sgt->nents, DMA_BIDIRECTIONAL);
+		etnaviv_gem_scatter_map(etnaviv_obj);
 	}
 
 	return etnaviv_obj->pages;

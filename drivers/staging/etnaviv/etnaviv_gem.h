@@ -23,6 +23,13 @@
 
 struct etnaviv_gem_ops;
 
+struct etnaviv_gem_userptr {
+	uintptr_t ptr;
+	struct task_struct *task;
+	struct work_struct *work;
+	bool ro;
+};
+
 struct etnaviv_gem_object {
 	struct drm_gem_object base;
 	const struct etnaviv_gem_ops *ops;
@@ -66,6 +73,8 @@ struct etnaviv_gem_object {
 	bool is_ring_buffer;
 	u32 offset;
 	u32 *last_wait; /* virtual address of last WAIT */
+
+	struct etnaviv_gem_userptr userptr;
 };
 #define to_etnaviv_bo(x) container_of(x, struct etnaviv_gem_object, base)
 

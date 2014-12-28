@@ -138,7 +138,7 @@ void msm_gem_put_pages(struct drm_gem_object *obj)
 	/* when we start tracking the pin count, then do something here */
 }
 
-static int etnaviv_gem_mmap_cmd(struct drm_gem_object *obj,
+static int etnaviv_gem_mmap_dma(struct drm_gem_object *obj,
 	struct vm_area_struct *vma)
 {
 	struct etnaviv_gem_object *etnaviv_obj = to_etnaviv_bo(obj);
@@ -159,7 +159,7 @@ static int etnaviv_gem_mmap_cmd(struct drm_gem_object *obj,
 	return ret;
 }
 
-static int etnaviv_gem_mmap_obj(struct drm_gem_object *obj,
+static int etnaviv_gem_mmap_shmem(struct drm_gem_object *obj,
 		struct vm_area_struct *vma)
 {
 	struct etnaviv_gem_object *etnaviv_obj = to_etnaviv_bo(obj);
@@ -203,10 +203,10 @@ int etnaviv_gem_mmap(struct file *filp, struct vm_area_struct *vma)
 	}
 
 	obj = to_etnaviv_bo(vma->vm_private_data);
-	if (obj->flags & ETNA_BO_CMDSTREAM)
-		ret = etnaviv_gem_mmap_cmd(vma->vm_private_data, vma);
+	if (obj->backend == ETNA_BO_BACKEND_DMA)
+		ret = etnaviv_gem_mmap_dma(vma->vm_private_data, vma);
 	else
-		ret = etnaviv_gem_mmap_obj(vma->vm_private_data, vma);
+		ret = etnaviv_gem_mmap_shmem(vma->vm_private_data, vma);
 
 	return ret;
 }
@@ -638,12 +638,15 @@ static int etnaviv_gem_new_impl(struct drm_device *dev,
 	struct etnaviv_gem_object *etnaviv_obj;
 	unsigned sz = sizeof(*etnaviv_obj);
 	bool valid = true;
+	enum etna_bo_backend backend;
 
 	/* validate flags */
 	if (flags & (ETNA_BO_CMDSTREAM | ETNA_BO_SCANOUT)) {
+		backend = ETNA_BO_BACKEND_DMA;
 		if ((flags & ETNA_BO_CACHE_MASK) != 0)
 			valid = false;
 	} else {
+		backend = ETNA_BO_BACKEND_SHMEM;
 		switch (flags & ETNA_BO_CACHE_MASK) {
 		case ETNA_BO_UNCACHED:
 		case ETNA_BO_CACHED:
@@ -665,7 +668,7 @@ static int etnaviv_gem_new_impl(struct drm_device *dev,
 	if (!etnaviv_obj)
 		return -ENOMEM;
 
-	if (flags & (ETNA_BO_CMDSTREAM | ETNA_BO_SCANOUT)) {
+	if (backend == ETNA_BO_BACKEND_DMA) {
 		etnaviv_obj->vaddr = dma_alloc_coherent(dev->dev, size,
 				&etnaviv_obj->paddr, GFP_KERNEL);
 
@@ -675,6 +678,7 @@ static int etnaviv_gem_new_impl(struct drm_device *dev,
 		}
 	}
 
+	etnaviv_obj->backend = backend;
 	etnaviv_obj->flags = flags;
 
 	etnaviv_obj->resv = &etnaviv_obj->_resv;

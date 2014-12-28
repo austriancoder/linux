@@ -30,10 +30,16 @@ struct etnaviv_gem_userptr {
 	bool ro;
 };
 
+enum etna_bo_backend {
+	ETNA_BO_BACKEND_SHMEM = 0,
+	ETNA_BO_BACKEND_DMA,
+};
+
 struct etnaviv_gem_object {
 	struct drm_gem_object base;
 	const struct etnaviv_gem_ops *ops;
 
+	enum etna_bo_backend backend;
 	uint32_t flags;
 
 	/* And object is either:

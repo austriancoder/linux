@@ -81,6 +81,7 @@ struct drm_etnaviv_param {
  */
 
 #define ETNA_BO_CMDSTREAM    0x00000001
+#define ETNA_BO_SCANOUT      0x00000002
 #define ETNA_BO_CACHE_MASK   0x000f0000
 /* cache modes */
 #define ETNA_BO_CACHED       0x00010000

@@ -613,7 +613,7 @@ static int etnaviv_gem_new_impl(struct drm_device *dev,
 	bool valid = true;
 
 	/* validate flags */
-	if (flags & ETNA_BO_CMDSTREAM) {
+	if (flags & (ETNA_BO_CMDSTREAM | ETNA_BO_SCANOUT)) {
 		if ((flags & ETNA_BO_CACHE_MASK) != 0)
 			valid = false;
 	} else {
@@ -638,7 +638,7 @@ static int etnaviv_gem_new_impl(struct drm_device *dev,
 	if (!etnaviv_obj)
 		return -ENOMEM;
 
-	if (flags & ETNA_BO_CMDSTREAM) {
+	if (flags & (ETNA_BO_CMDSTREAM | ETNA_BO_SCANOUT)) {
 		etnaviv_obj->vaddr = dma_alloc_coherent(dev->dev, size,
 				&etnaviv_obj->paddr, GFP_KERNEL);
 

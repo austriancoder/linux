@@ -103,13 +103,10 @@ static void put_pages(struct drm_gem_object *obj)
 struct page **etnaviv_gem_get_pages(struct drm_gem_object *obj)
 {
 	struct etnaviv_gem_object *etnaviv_obj = to_etnaviv_bo(obj);
-	struct drm_device *dev = obj->dev;
 	int ret;
 
 	if (!etnaviv_obj->pages) {
-		mutex_lock(&dev->struct_mutex);
 		ret = etnaviv_obj->ops->get_pages(etnaviv_obj);
-		mutex_unlock(&dev->struct_mutex);
 		if (ret < 0)
 			return ERR_PTR(ret);
 	}
@@ -144,6 +141,8 @@ static int etnaviv_gem_mmap_dma(struct drm_gem_object *obj,
 	struct etnaviv_gem_object *etnaviv_obj = to_etnaviv_bo(obj);
 	int ret;
 
+	printk(KERN_ERR "%s\n", __func__);
+
 	/*
 	 * Clear the VM_PFNMAP flag that was set by drm_gem_mmap(), and set the
 	 * vm_pgoff (used as a fake buffer offset by DRM) to 0 as we want to map
@@ -164,6 +163,8 @@ static int etnaviv_gem_mmap_shmem(struct drm_gem_object *obj,
 {
 	struct etnaviv_gem_object *etnaviv_obj = to_etnaviv_bo(obj);
 	pgprot_t vm_page_prot;
+
+	printk(KERN_ERR "%s\n", __func__);
 
 	vma->vm_flags &= ~VM_PFNMAP;
 	vma->vm_flags |= VM_MIXEDMAP;
@@ -195,6 +196,8 @@ int etnaviv_gem_mmap(struct file *filp, struct vm_area_struct *vma)
 {
 	struct etnaviv_gem_object *obj;
 	int ret;
+
+	printk(KERN_ERR "%s\n", __func__);
 
 	ret = drm_gem_mmap(filp, vma);
 	if (ret) {

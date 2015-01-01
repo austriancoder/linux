@@ -95,18 +95,10 @@ struct page **etnaviv_gem_get_pages(struct drm_gem_object *obj)
 	}
 
 	if (!etnaviv_obj->sgt) {
-		struct drm_device *dev = etnaviv_obj->base.dev;
-		int npages = etnaviv_obj->base.size >> PAGE_SHIFT;
-		struct sg_table *sgt;
+		ret = etnaviv_obj->ops->get_sgt(etnaviv_obj);
+		if (ret < 0)
+			return ERR_PTR(ret);
 
-		sgt = drm_prime_pages_to_sg(etnaviv_obj->pages, npages);
-		if (IS_ERR(sgt)) {
-			dev_err(dev->dev, "failed to allocate sgt: %ld\n",
-					PTR_ERR(sgt));
-			return ERR_CAST(etnaviv_obj->sgt);
-		}
-
-		etnaviv_obj->sgt = sgt;
 		etnaviv_gem_scatter_map(etnaviv_obj);
 	}
 
@@ -555,6 +547,23 @@ static int etnaviv_gem_shmem_get_pages(struct etnaviv_gem_object *etnaviv_obj)
 	return 0;
 }
 
+static int etnaviv_gem_shmem_get_sgt(struct etnaviv_gem_object *etnaviv_obj)
+{
+	struct drm_device *dev = etnaviv_obj->base.dev;
+	int npages = etnaviv_obj->base.size >> PAGE_SHIFT;
+	struct sg_table *sgt;
+
+	sgt = drm_prime_pages_to_sg(etnaviv_obj->pages, npages);
+	if (IS_ERR(sgt)) {
+		dev_err(dev->dev, "failed to allocate sgt: %ld\n",
+				PTR_ERR(sgt));
+		return PTR_ERR(etnaviv_obj->sgt);
+	}
+
+	etnaviv_obj->sgt = sgt;
+	return 0;
+}
+
 static void etnaviv_gem_shmem_release(struct etnaviv_gem_object *etnaviv_obj)
 {
 	if (etnaviv_obj->vaddr)
@@ -564,8 +573,29 @@ static void etnaviv_gem_shmem_release(struct etnaviv_gem_object *etnaviv_obj)
 
 static const struct etnaviv_gem_ops etnaviv_gem_shmem_ops = {
 	.get_pages = etnaviv_gem_shmem_get_pages,
+	.get_sgt = etnaviv_gem_shmem_get_sgt,
 	.release = etnaviv_gem_shmem_release,
 };
+
+static int etnaviv_gem_dma_get_sgt(struct etnaviv_gem_object *etnaviv_obj)
+{
+	struct sg_table *sgt;
+	int ret;
+
+	sgt = kzalloc(sizeof(*sgt), GFP_KERNEL);
+	if (!sgt)
+		return -ENOMEM;
+
+	ret = dma_get_sgtable(etnaviv_obj->base.dev->dev, sgt, etnaviv_obj->vaddr,
+			       etnaviv_obj->paddr, etnaviv_obj->base.size);
+
+	if (ret < 0)
+		kfree(sgt);
+	else
+		etnaviv_obj->sgt = sgt;
+
+	return ret;
+}
 
 static void etnaviv_gem_dma_release(struct etnaviv_gem_object *etnaviv_obj)
 {
@@ -574,6 +604,7 @@ static void etnaviv_gem_dma_release(struct etnaviv_gem_object *etnaviv_obj)
 }
 
 static const struct etnaviv_gem_ops etnaviv_gem_dma_ops = {
+	.get_sgt = etnaviv_gem_dma_get_sgt,
 	.release = etnaviv_gem_dma_release,
 };
 

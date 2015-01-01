@@ -86,6 +86,7 @@ struct etnaviv_gem_object {
 
 struct etnaviv_gem_ops {
 	int (*get_pages)(struct etnaviv_gem_object *);
+	int (*get_sgt)(struct etnaviv_gem_object *);
 	void (*release)(struct etnaviv_gem_object *);
 };
 

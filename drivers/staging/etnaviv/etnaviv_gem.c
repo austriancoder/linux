@@ -110,62 +110,9 @@ void msm_gem_put_pages(struct drm_gem_object *obj)
 	/* when we start tracking the pin count, then do something here */
 }
 
-static int etnaviv_gem_mmap_dma(struct drm_gem_object *obj,
-	struct vm_area_struct *vma)
-{
-	struct etnaviv_gem_object *etnaviv_obj = to_etnaviv_bo(obj);
-	int ret;
-
-	/*
-	 * Clear the VM_PFNMAP flag that was set by drm_gem_mmap(), and set the
-	 * vm_pgoff (used as a fake buffer offset by DRM) to 0 as we want to map
-	 * the whole buffer.
-	 */
-	vma->vm_flags &= ~VM_PFNMAP;
-	vma->vm_pgoff = 0;
-
-	ret = dma_mmap_coherent(obj->dev->dev, vma,
-				etnaviv_obj->vaddr, etnaviv_obj->paddr,
-				vma->vm_end - vma->vm_start);
-
-	return ret;
-}
-
-static int etnaviv_gem_mmap_shmem(struct drm_gem_object *obj,
-		struct vm_area_struct *vma)
-{
-	struct etnaviv_gem_object *etnaviv_obj = to_etnaviv_bo(obj);
-	pgprot_t vm_page_prot;
-
-	vma->vm_flags &= ~VM_PFNMAP;
-	vma->vm_flags |= VM_MIXEDMAP;
-
-	vm_page_prot = vm_get_page_prot(vma->vm_flags);
-
-	if (etnaviv_obj->flags & ETNA_BO_WC) {
-		vma->vm_page_prot = pgprot_writecombine(vm_page_prot);
-	} else if (etnaviv_obj->flags & ETNA_BO_UNCACHED) {
-		vma->vm_page_prot = pgprot_noncached(vm_page_prot);
-	} else {
-		/*
-		 * Shunt off cached objs to shmem file so they have their own
-		 * address_space (so unmap_mapping_range does what we want,
-		 * in particular in the case of mmap'd dmabufs)
-		 */
-		fput(vma->vm_file);
-		get_file(obj->filp);
-		vma->vm_pgoff = 0;
-		vma->vm_file  = obj->filp;
-
-		vma->vm_page_prot = vm_page_prot;
-	}
-
-	return 0;
-}
-
 int etnaviv_gem_mmap(struct file *filp, struct vm_area_struct *vma)
 {
-	struct etnaviv_gem_object *obj;
+	struct etnaviv_gem_object *etnaviv_obj;
 	int ret;
 
 	ret = drm_gem_mmap(filp, vma);
@@ -174,11 +121,8 @@ int etnaviv_gem_mmap(struct file *filp, struct vm_area_struct *vma)
 		return ret;
 	}
 
-	obj = to_etnaviv_bo(vma->vm_private_data);
-	if (obj->backend == ETNA_BO_BACKEND_DMA)
-		ret = etnaviv_gem_mmap_dma(vma->vm_private_data, vma);
-	else
-		ret = etnaviv_gem_mmap_shmem(vma->vm_private_data, vma);
+	etnaviv_obj = to_etnaviv_bo(vma->vm_private_data);
+	ret = etnaviv_obj->ops->mmap(vma->vm_private_data, vma);
 
 	return ret;
 }
@@ -564,6 +508,38 @@ static int etnaviv_gem_shmem_get_sgt(struct etnaviv_gem_object *etnaviv_obj)
 	return 0;
 }
 
+static int etnaviv_gem_shmem_mmap(struct drm_gem_object *obj,
+		struct vm_area_struct *vma)
+{
+	struct etnaviv_gem_object *etnaviv_obj = to_etnaviv_bo(obj);
+	pgprot_t vm_page_prot;
+
+	vma->vm_flags &= ~VM_PFNMAP;
+	vma->vm_flags |= VM_MIXEDMAP;
+
+	vm_page_prot = vm_get_page_prot(vma->vm_flags);
+
+	if (etnaviv_obj->flags & ETNA_BO_WC) {
+		vma->vm_page_prot = pgprot_writecombine(vm_page_prot);
+	} else if (etnaviv_obj->flags & ETNA_BO_UNCACHED) {
+		vma->vm_page_prot = pgprot_noncached(vm_page_prot);
+	} else {
+		/*
+		 * Shunt off cached objs to shmem file so they have their own
+		 * address_space (so unmap_mapping_range does what we want,
+		 * in particular in the case of mmap'd dmabufs)
+		 */
+		fput(vma->vm_file);
+		get_file(obj->filp);
+		vma->vm_pgoff = 0;
+		vma->vm_file  = obj->filp;
+
+		vma->vm_page_prot = vm_page_prot;
+	}
+
+	return 0;
+}
+
 static void etnaviv_gem_shmem_release(struct etnaviv_gem_object *etnaviv_obj)
 {
 	if (etnaviv_obj->vaddr)
@@ -574,6 +550,7 @@ static void etnaviv_gem_shmem_release(struct etnaviv_gem_object *etnaviv_obj)
 static const struct etnaviv_gem_ops etnaviv_gem_shmem_ops = {
 	.get_pages = etnaviv_gem_shmem_get_pages,
 	.get_sgt = etnaviv_gem_shmem_get_sgt,
+	.mmap = etnaviv_gem_shmem_mmap,
 	.release = etnaviv_gem_shmem_release,
 };
 
@@ -597,6 +574,27 @@ static int etnaviv_gem_dma_get_sgt(struct etnaviv_gem_object *etnaviv_obj)
 	return ret;
 }
 
+static int etnaviv_gem_dma_mmap(struct drm_gem_object *obj,
+	struct vm_area_struct *vma)
+{
+	struct etnaviv_gem_object *etnaviv_obj = to_etnaviv_bo(obj);
+	int ret;
+
+	/*
+	 * Clear the VM_PFNMAP flag that was set by drm_gem_mmap(), and set the
+	 * vm_pgoff (used as a fake buffer offset by DRM) to 0 as we want to map
+	 * the whole buffer.
+	 */
+	vma->vm_flags &= ~VM_PFNMAP;
+	vma->vm_pgoff = 0;
+
+	ret = dma_mmap_coherent(obj->dev->dev, vma,
+				etnaviv_obj->vaddr, etnaviv_obj->paddr,
+				vma->vm_end - vma->vm_start);
+
+	return ret;
+}
+
 static void etnaviv_gem_dma_release(struct etnaviv_gem_object *etnaviv_obj)
 {
 	dma_free_coherent(etnaviv_obj->base.dev->dev, etnaviv_obj->base.size,
@@ -605,6 +603,7 @@ static void etnaviv_gem_dma_release(struct etnaviv_gem_object *etnaviv_obj)
 
 static const struct etnaviv_gem_ops etnaviv_gem_dma_ops = {
 	.get_sgt = etnaviv_gem_dma_get_sgt,
+	.mmap = etnaviv_gem_dma_mmap,
 	.release = etnaviv_gem_dma_release,
 };
 

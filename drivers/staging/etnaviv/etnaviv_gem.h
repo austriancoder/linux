@@ -87,6 +87,7 @@ struct etnaviv_gem_object {
 struct etnaviv_gem_ops {
 	int (*get_pages)(struct etnaviv_gem_object *);
 	int (*get_sgt)(struct etnaviv_gem_object *);
+	int (*mmap)(struct drm_gem_object *obj, struct vm_area_struct *vma);
 	void (*release)(struct etnaviv_gem_object *);
 };
 

@@ -567,14 +567,14 @@ static const struct etnaviv_gem_ops etnaviv_gem_shmem_ops = {
 	.release = etnaviv_gem_shmem_release,
 };
 
-static void etnaviv_gem_cmd_release(struct etnaviv_gem_object *etnaviv_obj)
+static void etnaviv_gem_dma_release(struct etnaviv_gem_object *etnaviv_obj)
 {
 	dma_free_coherent(etnaviv_obj->base.dev->dev, etnaviv_obj->base.size,
 		etnaviv_obj->vaddr, etnaviv_obj->paddr);
 }
 
-static const struct etnaviv_gem_ops etnaviv_gem_cmd_ops = {
-	.release = etnaviv_gem_cmd_release,
+static const struct etnaviv_gem_ops etnaviv_gem_dma_ops = {
+	.release = etnaviv_gem_dma_release,
 };
 
 void etnaviv_gem_free_object(struct drm_gem_object *obj)
@@ -705,7 +705,7 @@ struct drm_gem_object *etnaviv_gem_new(struct drm_device *dev,
 
 	ret = 0;
 	if (flags & ETNA_BO_CMDSTREAM) {
-		to_etnaviv_bo(obj)->ops = &etnaviv_gem_cmd_ops;
+		to_etnaviv_bo(obj)->ops = &etnaviv_gem_dma_ops;
 		drm_gem_private_object_init(dev, obj, size);
 	} else {
 		to_etnaviv_bo(obj)->ops = &etnaviv_gem_shmem_ops;

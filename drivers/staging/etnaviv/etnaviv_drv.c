@@ -488,7 +488,7 @@ static int etnaviv_ioctl_gem_info(struct drm_device *dev, void *data,
 	if (!obj)
 		return -ENOENT;
 
-	args->offset = msm_gem_mmap_offset(obj);
+	args->offset = etnaviv_gem_mmap_offset(obj);
 
 	drm_gem_object_unreference_unlocked(obj);
 

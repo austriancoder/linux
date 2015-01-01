@@ -201,7 +201,7 @@ static uint64_t mmap_offset(struct drm_gem_object *obj)
 	return drm_vma_node_offset_addr(&obj->vma_node);
 }
 
-uint64_t msm_gem_mmap_offset(struct drm_gem_object *obj)
+uint64_t etnaviv_gem_mmap_offset(struct drm_gem_object *obj)
 {
 	uint64_t offset;
 

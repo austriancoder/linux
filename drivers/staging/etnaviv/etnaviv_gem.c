@@ -315,7 +315,7 @@ int msm_gem_dumb_map_offset(struct drm_file *file, struct drm_device *dev,
 		goto fail;
 	}
 
-	*offset = msm_gem_mmap_offset(obj);
+	*offset = etnaviv_gem_mmap_offset(obj);
 
 	drm_gem_object_unreference_unlocked(obj);
 

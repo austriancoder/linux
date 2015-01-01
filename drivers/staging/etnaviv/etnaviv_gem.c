@@ -342,7 +342,7 @@ void *etnaviv_gem_vaddr_locked(struct drm_gem_object *obj)
 	return etnaviv_obj->vaddr;
 }
 
-void *msm_gem_vaddr(struct drm_gem_object *obj)
+void *etnaviv_gem_vaddr(struct drm_gem_object *obj)
 {
 	void *ret;
 

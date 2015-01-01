@@ -32,7 +32,7 @@ struct sg_table *msm_gem_prime_get_sg_table(struct drm_gem_object *obj)
 
 void *msm_gem_prime_vmap(struct drm_gem_object *obj)
 {
-	return msm_gem_vaddr(obj);
+	return etnaviv_gem_vaddr(obj);
 }
 
 void msm_gem_prime_vunmap(struct drm_gem_object *obj, void *vaddr)

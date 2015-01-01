@@ -21,7 +21,7 @@
 
 #include <linux/dma-buf.h>
 
-struct sg_table *msm_gem_prime_get_sg_table(struct drm_gem_object *obj)
+struct sg_table *etnaviv_gem_prime_get_sg_table(struct drm_gem_object *obj)
 {
 	struct etnaviv_gem_object *etnaviv_obj = to_etnaviv_bo(obj);
 
@@ -30,7 +30,7 @@ struct sg_table *msm_gem_prime_get_sg_table(struct drm_gem_object *obj)
 	return etnaviv_obj->sgt;
 }
 
-void *msm_gem_prime_vmap(struct drm_gem_object *obj)
+void *etnaviv_gem_prime_vmap(struct drm_gem_object *obj)
 {
 	return etnaviv_gem_vaddr(obj);
 }

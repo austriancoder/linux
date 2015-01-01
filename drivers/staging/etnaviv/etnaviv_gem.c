@@ -723,6 +723,7 @@ struct drm_gem_object *etnaviv_gem_new(struct drm_device *dev,
 		uint32_t size, uint32_t flags)
 {
 	struct drm_gem_object *obj = NULL;
+	struct etnaviv_gem_object *etnaviv_obj;
 	int ret;
 
 	WARN_ON(!mutex_is_locked(&dev->struct_mutex));
@@ -733,12 +734,12 @@ struct drm_gem_object *etnaviv_gem_new(struct drm_device *dev,
 	if (ret)
 		goto fail;
 
-	ret = 0;
-	if (flags & ETNA_BO_CMDSTREAM) {
-		to_etnaviv_bo(obj)->ops = &etnaviv_gem_dma_ops;
+	etnaviv_obj = to_etnaviv_bo(obj);
+	if (etnaviv_obj->backend == ETNA_BO_BACKEND_DMA) {
+		etnaviv_obj->ops = &etnaviv_gem_dma_ops;
 		drm_gem_private_object_init(dev, obj, size);
 	} else {
-		to_etnaviv_bo(obj)->ops = &etnaviv_gem_shmem_ops;
+		etnaviv_obj->ops = &etnaviv_gem_shmem_ops;
 		ret = drm_gem_object_init(dev, obj, size);
 	}
 

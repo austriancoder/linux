@@ -61,23 +61,6 @@ void etnaviv_gem_scatterlist_unmap(struct etnaviv_gem_object *etnaviv_obj)
 	}
 }
 
-/* called with dev->struct_mutex held */
-static int etnaviv_gem_shmem_get_pages(struct etnaviv_gem_object *etnaviv_obj)
-{
-	struct drm_device *dev = etnaviv_obj->base.dev;
-	struct page **p = drm_gem_get_pages(&etnaviv_obj->base);
-
-	if (IS_ERR(p)) {
-		dev_err(dev->dev, "could not get pages: %ld\n",
-				PTR_ERR(p));
-		return PTR_ERR(p);
-	}
-
-	etnaviv_obj->pages = p;
-
-	return 0;
-}
-
 static void put_pages(struct drm_gem_object *obj)
 {
 	struct etnaviv_gem_object *etnaviv_obj = to_etnaviv_bo(obj);
@@ -540,16 +523,6 @@ void etnaviv_gem_describe_objects(struct list_head *list, struct seq_file *m)
 }
 #endif
 
-static void etnaviv_gem_cmd_release(struct etnaviv_gem_object *etnaviv_obj)
-{
-	dma_free_coherent(etnaviv_obj->base.dev->dev, etnaviv_obj->base.size,
-		etnaviv_obj->vaddr, etnaviv_obj->paddr);
-}
-
-static const struct etnaviv_gem_ops etnaviv_gem_cmd_ops = {
-	.release = etnaviv_gem_cmd_release,
-};
-
 static void etnaviv_free_obj(struct drm_gem_object *obj)
 {
 	struct etnaviv_gem_object *etnaviv_obj = to_etnaviv_bo(obj);
@@ -565,6 +538,23 @@ static void etnaviv_free_obj(struct drm_gem_object *obj)
 	}
 }
 
+/* called with dev->struct_mutex held */
+static int etnaviv_gem_shmem_get_pages(struct etnaviv_gem_object *etnaviv_obj)
+{
+	struct drm_device *dev = etnaviv_obj->base.dev;
+	struct page **p = drm_gem_get_pages(&etnaviv_obj->base);
+
+	if (IS_ERR(p)) {
+		dev_err(dev->dev, "could not get pages: %ld\n",
+				PTR_ERR(p));
+		return PTR_ERR(p);
+	}
+
+	etnaviv_obj->pages = p;
+
+	return 0;
+}
+
 static void etnaviv_gem_shmem_release(struct etnaviv_gem_object *etnaviv_obj)
 {
 	if (etnaviv_obj->vaddr)
@@ -575,6 +565,16 @@ static void etnaviv_gem_shmem_release(struct etnaviv_gem_object *etnaviv_obj)
 static const struct etnaviv_gem_ops etnaviv_gem_shmem_ops = {
 	.get_pages = etnaviv_gem_shmem_get_pages,
 	.release = etnaviv_gem_shmem_release,
+};
+
+static void etnaviv_gem_cmd_release(struct etnaviv_gem_object *etnaviv_obj)
+{
+	dma_free_coherent(etnaviv_obj->base.dev->dev, etnaviv_obj->base.size,
+		etnaviv_obj->vaddr, etnaviv_obj->paddr);
+}
+
+static const struct etnaviv_gem_ops etnaviv_gem_cmd_ops = {
+	.release = etnaviv_gem_cmd_release,
 };
 
 void etnaviv_gem_free_object(struct drm_gem_object *obj)

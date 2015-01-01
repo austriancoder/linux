@@ -554,6 +554,11 @@ static const struct etnaviv_gem_ops etnaviv_gem_shmem_ops = {
 	.release = etnaviv_gem_shmem_release,
 };
 
+static int etnaviv_gem_dma_get_pages(struct etnaviv_gem_object *etnaviv_obj)
+{
+	return 0;
+}
+
 static int etnaviv_gem_dma_get_sgt(struct etnaviv_gem_object *etnaviv_obj)
 {
 	struct sg_table *sgt;
@@ -602,6 +607,7 @@ static void etnaviv_gem_dma_release(struct etnaviv_gem_object *etnaviv_obj)
 }
 
 static const struct etnaviv_gem_ops etnaviv_gem_dma_ops = {
+	.get_pages = etnaviv_gem_dma_get_pages,
 	.get_sgt = etnaviv_gem_dma_get_sgt,
 	.mmap = etnaviv_gem_dma_mmap,
 	.release = etnaviv_gem_dma_release,

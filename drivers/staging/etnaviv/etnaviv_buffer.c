@@ -123,6 +123,14 @@ static inline void CMD_STALL(struct etnaviv_gem_object *buffer,
  * High level commands:
  */
 
+static void cmd_trigger_event(struct etnaviv_gem_object *buffer,
+		unsigned int event)
+{
+	/* trigger event */
+	CMD_LOAD_STATE(buffer, VIVS_GL_EVENT,
+			VIVS_GL_EVENT_EVENT_ID(event) | VIVS_GL_EVENT_FROM_PE);
+}
+
 static void cmd_select_pipe(struct etnaviv_gem_object *buffer, u8 pipe)
 {
 	u32 flush;
@@ -209,7 +217,6 @@ static int cmd_mmu_flush(struct etnaviv_gem_object *buffer)
 	return words_used;
 }
 
-
 u32 etnaviv_buffer_init(struct etnaviv_gpu *gpu)
 {
 	struct etnaviv_gem_object *buffer = to_etnaviv_bo(gpu->buffer);
@@ -261,8 +268,7 @@ void etnaviv_buffer_queue(struct etnaviv_gpu *gpu, unsigned int event,
 		VIV_FE_LINK_HEADER_PREFETCH(prefetch);
 
 	/* trigger event */
-	CMD_LOAD_STATE(buffer, VIVS_GL_EVENT,
-			VIVS_GL_EVENT_EVENT_ID(event) | VIVS_GL_EVENT_FROM_PE);
+	cmd_trigger_event(buffer, event);
 
 	/* append WAIT/LINK to 'ring'-buffer */
 	CMD_WAIT(buffer);

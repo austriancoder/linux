@@ -145,6 +145,22 @@ static void cmd_select_pipe(struct etnaviv_gem_object *buffer, u8 pipe)
 		       VIVS_GL_PIPE_SELECT_PIPE(pipe));
 }
 
+static void cmd_enable_mmu(struct etnaviv_gem_object *buffer)
+{
+	struct etnaviv_gpu *gpu = buffer->gpu;
+
+	if (gpu->mmu->version == ETNAVIV_IOMMU_V2) {
+		u32 config = gpu->pgtable | VIVS_MMUv2_CONFIGURATION_MODE_MODE1_K;
+
+		/* pgtable address aligned correctly? */
+		WARN_ON(gpu->pgtable & 0x3ff);
+
+		CMD_LOAD_STATE(buffer, VIVS_MMUv2_CONFIGURATION, config);
+
+		/* TODO: safe zone */
+	}
+}
+
 static int cmd_mmu_flush(struct etnaviv_gem_object *buffer)
 {
 	int words_used = 0;
@@ -204,6 +220,7 @@ u32 etnaviv_buffer_init(struct etnaviv_gpu *gpu)
 	buffer->gpu = gpu;
 
 	cmd_select_pipe(buffer, gpu->pipe);
+	cmd_enable_mmu(buffer);
 
 	CMD_WAIT(buffer);
 	CMD_LINK(buffer, 4, buffer->paddr + to_bytes(buffer->offset - 1));

@@ -93,8 +93,10 @@ struct etnaviv_gpu {
 	struct drm_gem_object *buffer;
 
 	/* event management: */
+#define ETNA_MANAGEMENT_EVENT 30
 	struct etnaviv_event event[30];
 	struct completion event_free;
+	struct completion management_event;
 	spinlock_t event_spinlock;
 
 	/* list of GEM active objects: */
@@ -148,6 +150,8 @@ int etnaviv_gpu_pm_resume(struct etnaviv_gpu *gpu);
 #ifdef CONFIG_DEBUG_FS
 void etnaviv_gpu_debugfs(struct etnaviv_gpu *gpu, struct seq_file *m);
 #endif
+
+unsigned long etnaviv_gpu_management_event_wait(struct etnaviv_gpu *gpu);
 
 void etnaviv_gpu_retire(struct etnaviv_gpu *gpu);
 int etnaviv_gpu_submit(struct etnaviv_gpu *gpu,

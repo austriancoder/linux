@@ -423,6 +423,10 @@ int etnaviv_gpu_init(struct etnaviv_gpu *gpu)
 		complete(&gpu->event_free);
 	}
 
+	/* Setup separate event for management work */
+	init_completion(&gpu->management_event);
+	complete(&gpu->management_event);
+
 	/* Start command processor */
 	prefetch = etnaviv_buffer_init(gpu);
 
@@ -785,6 +789,12 @@ static void event_free(struct etnaviv_gpu *gpu, unsigned int event)
 	}
 }
 
+unsigned long etnaviv_gpu_management_event_wait(struct etnaviv_gpu *gpu)
+{
+	return wait_for_completion_timeout(&gpu->management_event,
+			  msecs_to_jiffies(10 * 10000));
+}
+
 /*
  * Cmdstream submission/retirement:
  */
@@ -913,9 +923,14 @@ static irqreturn_t irq_handler(int irq, void *data)
 			uint8_t event = __fls(intr);
 
 			dev_dbg(gpu->dev, "event %u\n", event);
-			gpu->retired_fence = gpu->event[event].fence;
-			event_free(gpu, event);
-			etnaviv_gpu_retire(gpu);
+
+			if (event == ETNA_MANAGEMENT_EVENT)
+				complete(&gpu->management_event);
+			else {
+				gpu->retired_fence = gpu->event[event].fence;
+				event_free(gpu, event);
+				etnaviv_gpu_retire(gpu);
+			}
 		}
 
 		ret = IRQ_HANDLED;

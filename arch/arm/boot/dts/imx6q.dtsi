@@ -17,6 +17,19 @@
 		spi4 = &ecspi5;
 	};
 
+	reserved-memory {
+		#address-cells = <1>;
+		#size-cells = <1>;
+		ranges;
+
+		gpu_reserved: gpu_reserved {
+			compatible = "shared-dma-pool";
+			size = <0x8000000>;
+			alloc-ranges = <0x0 0x40000000>;
+			reusable;
+		};
+	};
+
 	cpus {
 		#address-cells = <1>;
 		#size-cells = <0>;
@@ -226,6 +239,7 @@
 			#size-cells = <1>;
 			compatible = "vivante,gccore";
 			ranges;
+			memory-region 	= <&gpu_reserved>;
 
 			gpu2d@00134000 {
 				compatible      = "vivante,vivante-gpu-2d";

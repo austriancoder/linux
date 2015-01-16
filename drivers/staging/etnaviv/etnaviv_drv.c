@@ -17,6 +17,7 @@
 
 #include <linux/component.h>
 #include <linux/of_platform.h>
+#include <linux/of_reserved_mem.h>
 
 #include "etnaviv_drv.h"
 #include "etnaviv_gpu.h"
@@ -664,8 +665,12 @@ static int etnaviv_pdev_probe(struct platform_device *pdev)
 {
 	struct device *dev = &pdev->dev;
 	struct device_node *node = dev->of_node;
+	int ret;
 
 	of_platform_populate(node, NULL, NULL, dev);
+	ret = of_reserved_mem_device_init(dev);
+	if (ret)
+		dev_warn(dev, "failed to assign reserved memory\n");
 
 	dma_set_coherent_mask(&pdev->dev, DMA_BIT_MASK(32));
 
@@ -674,7 +679,10 @@ static int etnaviv_pdev_probe(struct platform_device *pdev)
 
 static int etnaviv_pdev_remove(struct platform_device *pdev)
 {
-	component_master_del(&pdev->dev, &etnaviv_master_ops);
+	struct device *dev = &pdev->dev;
+
+	of_reserved_mem_device_release(dev);
+	component_master_del(dev, &etnaviv_master_ops);
 
 	return 0;
 }

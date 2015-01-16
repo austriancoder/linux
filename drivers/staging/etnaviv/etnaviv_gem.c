@@ -225,7 +225,7 @@ int etnaviv_gem_get_iova_locked(struct etnaviv_gpu *gpu,
 	struct etnaviv_gem_object *etnaviv_obj = to_etnaviv_bo(obj);
 	int ret = 0;
 
-	if (!etnaviv_obj->iova  && !(etnaviv_obj->flags & ETNA_BO_CMDSTREAM)) {
+	if (!etnaviv_obj->iova && (etnaviv_obj->backend != ETNA_BO_BACKEND_DMA)) {
 		struct etnaviv_drm_private *priv = obj->dev->dev_private;
 		struct etnaviv_iommu *mmu = priv->mmu;
 		struct page **pages = etnaviv_gem_get_pages(obj);
@@ -626,7 +626,7 @@ void etnaviv_gem_free_object(struct drm_gem_object *obj)
 
 	list_del(&etnaviv_obj->mm_list);
 
-	if (!(etnaviv_obj->flags & ETNA_BO_CMDSTREAM))
+	if (etnaviv_obj->backend != ETNA_BO_BACKEND_DMA)
 		etnaviv_free_obj(obj);
 
 	drm_gem_free_mmap_offset(obj);

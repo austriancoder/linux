@@ -44,6 +44,21 @@ static const char *opcode_to_str(u8 cmd)
     return "UNKOWN OPCODE";
 }
 
+static int validate_load_state(u32 cmd, u32 *data)
+{
+	unsigned int count, off;
+
+	count = VIV_FE_LOAD_STATE_HEADER_COUNT(cmd);
+	off = VIV_FE_LOAD_STATE_HEADER_OFFSET(cmd);
+
+	if (count == 0x0)
+		return -EINVAL;
+
+	/* TODO: validate offset */
+
+	return count + 1;
+}
+
 bool etnaviv_cmd_validate(struct etnaviv_gpu *gpu,
 	struct etnaviv_gem_object *obj, unsigned int size)
 {
@@ -58,8 +73,7 @@ bool etnaviv_cmd_validate(struct etnaviv_gpu *gpu,
 
 		switch (op) {
 		case FE_OPCODE_LOAD_STATE:
-			n = VIV_FE_LOAD_STATE_HEADER_COUNT(cmd);
-			len = 1 + n;
+			len = validate_load_state(cmd, buf + 1);
 			break;
 
 		case FE_OPCODE_DRAW_2D:
@@ -82,6 +96,12 @@ bool etnaviv_cmd_validate(struct etnaviv_gpu *gpu,
 
 		default:
 			dev_err(gpu->dev, "%s: op %s (%u) not permitted at offset %u\n",
+					__func__, opcode_to_str(op), op, buf - start);
+			return false;
+		}
+
+		if (len < 0) {
+			dev_err(gpu->dev, "%s: op %s (%u) at offset %u is not valid\n",
 					__func__, opcode_to_str(op), op, buf - start);
 			return false;
 		}

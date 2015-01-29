@@ -20,6 +20,30 @@
 
 #include "cmdstream.xml.h"
 
+static const char *opcode_to_str(u8 cmd)
+{
+    const char *op_names[] =
+    {
+        "FE_OPCODE_LOAD_STATE",
+        "FE_OPCODE_END",
+        "FE_OPCODE_NOP",
+        "FE_OPCODE_DRAW_2D",
+        "FE_OPCODE_DRAW_PRIMITIVES",
+        "FE_OPCODE_DRAW_INDEXED_PRIMITIVES",
+        "FE_OPCODE_WAIT",
+        "FE_OPCODE_LINK",
+        "FE_OPCODE_STALL",
+        "FE_OPCODE_CALL",
+        "FE_OPCODE_RETURN",
+        "FE_OPCODE_CHIP_SELECT"
+    };
+
+    if (cmd <= FE_OPCODE_CHIP_SELECT)
+        return op_names[cmd];
+
+    return "UNKOWN OPCODE";
+}
+
 bool etnaviv_cmd_validate(struct etnaviv_gpu *gpu,
 	struct etnaviv_gem_object *obj, unsigned int size)
 {
@@ -57,8 +81,8 @@ bool etnaviv_cmd_validate(struct etnaviv_gpu *gpu,
 			break;
 
 		default:
-			dev_err(gpu->dev, "%s: op %u not permitted at offset %u\n",
-				__func__, op, buf - start);
+			dev_err(gpu->dev, "%s: op %s (%u) not permitted at offset %u\n",
+					__func__, opcode_to_str(op), op, buf - start);
 			return false;
 		}
 

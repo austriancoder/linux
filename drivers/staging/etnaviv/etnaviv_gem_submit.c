@@ -370,6 +370,11 @@ int etnaviv_ioctl_gem_submit(struct drm_device *dev, void *data,
 	submit->cmd.size = submit_cmd.size / 4;
 	submit->cmd.obj = etnaviv_obj;
 
+	if (!etnaviv_cmd_validate(gpu, etnaviv_obj, submit->cmd.size)) {
+		ret = -EINVAL;
+		goto out;
+	}
+
 	ret = submit_reloc(submit, etnaviv_obj, submit_cmd.nr_relocs,
 			submit_cmd.relocs);
 	if (ret)

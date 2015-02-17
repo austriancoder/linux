@@ -48,8 +48,10 @@ static int validate_load_state(u32 cmd, u32 *data)
 {
 	unsigned int count, off;
 
-	count = VIV_FE_LOAD_STATE_HEADER_COUNT(cmd);
-	off = VIV_FE_LOAD_STATE_HEADER_OFFSET(cmd);
+	count = (cmd & VIV_FE_LOAD_STATE_HEADER_COUNT__MASK) >>
+			VIV_FE_LOAD_STATE_HEADER_COUNT__SHIFT;
+	off = (cmd & VIV_FE_LOAD_STATE_HEADER_OFFSET__MASK) >>
+			VIV_FE_LOAD_STATE_HEADER_OFFSET__SHIFT;
 
 	if (count == 0x0)
 		return -EINVAL;

@@ -39,7 +39,7 @@ static const char *opcode_to_str(u8 cmd)
     };
 
     if (cmd <= FE_OPCODE_CHIP_SELECT)
-        return op_names[cmd];
+        return op_names[cmd - 1];
 
     return "UNKOWN OPCODE";
 }

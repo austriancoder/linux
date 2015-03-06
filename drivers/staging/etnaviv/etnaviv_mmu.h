@@ -26,9 +26,7 @@ enum etnaviv_iommu_version {
 };
 
 struct etnaviv_iommu {
-	struct drm_device *dev;
 	struct iommu_domain *domain;
-
 	enum etnaviv_iommu_version version;
 
 	/* memory manager for GPU address area */

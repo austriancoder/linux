@@ -107,7 +107,6 @@ struct etnaviv_iommu *etnaviv_iommu_new(struct drm_device *dev,
 		return ERR_PTR(-ENOMEM);
 
 	mmu->domain = domain;
-	mmu->dev = dev;
 	mmu->version = version;
 
 	drm_mm_init(&mmu->mm, domain->geometry.aperture_start,

@@ -22,27 +22,26 @@
 
 static const char *opcode_to_str(u8 cmd)
 {
-    const char *op_names[] =
-    {
-        "FE_OPCODE_LOAD_STATE",
-        "FE_OPCODE_END",
-        "FE_OPCODE_NOP",
-        "FE_OPCODE_DRAW_2D",
-        "FE_OPCODE_DRAW_PRIMITIVES",
-        "FE_OPCODE_DRAW_INDEXED_PRIMITIVES",
-        "FE_OPCODE_WAIT",
-        "FE_OPCODE_LINK",
-        "FE_OPCODE_STALL",
-        "FE_OPCODE_CALL",
-        "FE_OPCODE_RETURN",
-        "UNKOWN OPCODE",
-        "FE_OPCODE_CHIP_SELECT"
-    };
+	static const char * const op_names[] = {
+		"FE_OPCODE_LOAD_STATE",
+		"FE_OPCODE_END",
+		"FE_OPCODE_NOP",
+		"FE_OPCODE_DRAW_2D",
+		"FE_OPCODE_DRAW_PRIMITIVES",
+		"FE_OPCODE_DRAW_INDEXED_PRIMITIVES",
+		"FE_OPCODE_WAIT",
+		"FE_OPCODE_LINK",
+		"FE_OPCODE_STALL",
+		"FE_OPCODE_CALL",
+		"FE_OPCODE_RETURN",
+		"UNKOWN OPCODE",
+		"FE_OPCODE_CHIP_SELECT"
+	};
 
-    if (cmd <= FE_OPCODE_CHIP_SELECT)
-        return op_names[cmd - 1];
+	if (cmd <= FE_OPCODE_CHIP_SELECT)
+		return op_names[cmd - 1];
 
-    return "UNKOWN OPCODE";
+	return "UNKOWN OPCODE";
 }
 
 static int validate_offset(u32 offset, u32 data)

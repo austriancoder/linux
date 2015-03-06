@@ -35,6 +35,7 @@ static const char *opcode_to_str(u8 cmd)
         "FE_OPCODE_STALL",
         "FE_OPCODE_CALL",
         "FE_OPCODE_RETURN",
+        "UNKOWN OPCODE",
         "FE_OPCODE_CHIP_SELECT"
     };
 

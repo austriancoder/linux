@@ -353,18 +353,9 @@ static int etnaviv_hw_reset(struct etnaviv_gpu *gpu)
 	return 0;
 }
 
-int etnaviv_gpu_init(struct etnaviv_gpu *gpu)
+static void etnaviv_hw_init(struct etnaviv_gpu *gpu)
 {
-	int ret, i;
 	u32 prefetch;
-	bool mmuv1;
-	struct iommu_domain *iommu;
-	enum etnaviv_iommu_version version;
-
-	etnaviv_hw_identify(gpu);
-	ret = etnaviv_hw_reset(gpu);
-	if (ret)
-		return ret;
 
 	/* set GPU AXI cache attribute to "cacheable, no allocate" */
 	gpu_write(gpu, VIVS_HI_AXI_CONFIG,
@@ -377,6 +368,29 @@ int etnaviv_gpu_init(struct etnaviv_gpu *gpu)
 	gpu_write(gpu, VIVS_MC_MEMORY_BASE_ADDR_TX, 0x0);
 	gpu_write(gpu, VIVS_MC_MEMORY_BASE_ADDR_PEZ, 0x0);
 	gpu_write(gpu, VIVS_MC_MEMORY_BASE_ADDR_PE, 0x0);
+
+	/* start command processor */
+	prefetch = etnaviv_buffer_init(gpu);
+
+	gpu_write(gpu, VIVS_HI_INTR_ENBL, ~0U);
+	gpu_write(gpu, VIVS_FE_COMMAND_ADDRESS,
+		  etnaviv_gem_paddr_locked(gpu->buffer));
+	gpu_write(gpu, VIVS_FE_COMMAND_CONTROL,
+		  VIVS_FE_COMMAND_CONTROL_ENABLE |
+		  VIVS_FE_COMMAND_CONTROL_PREFETCH(prefetch));
+}
+
+int etnaviv_gpu_init(struct etnaviv_gpu *gpu)
+{
+	int ret, i;
+	bool mmuv1;
+	struct iommu_domain *iommu;
+	enum etnaviv_iommu_version version;
+
+	etnaviv_hw_identify(gpu);
+	ret = etnaviv_hw_reset(gpu);
+	if (ret)
+		return ret;
 
 	/* Setup IOMMU.. eventually we will (I think) do this once per context
 	 * and have separate page tables per context.  For now, to keep things
@@ -427,15 +441,7 @@ int etnaviv_gpu_init(struct etnaviv_gpu *gpu)
 	init_completion(&gpu->management_event);
 	complete(&gpu->management_event);
 
-	/* Start command processor */
-	prefetch = etnaviv_buffer_init(gpu);
-
-	gpu_write(gpu, VIVS_HI_INTR_ENBL, ~0U);
-	gpu_write(gpu, VIVS_FE_COMMAND_ADDRESS,
-		  etnaviv_gem_paddr_locked(gpu->buffer));
-	gpu_write(gpu, VIVS_FE_COMMAND_CONTROL,
-		  VIVS_FE_COMMAND_CONTROL_ENABLE |
-		  VIVS_FE_COMMAND_CONTROL_PREFETCH(prefetch));
+	etnaviv_hw_init(gpu);
 
 	return 0;
 

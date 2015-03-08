@@ -696,6 +696,12 @@ int etnaviv_gpu_pm_suspend(struct etnaviv_gpu *gpu)
 	return 0;
 }
 
+static void etnaviv_gpu_recover(struct etnaviv_gpu *gpu)
+{
+	etnaviv_hw_reset(gpu);
+	etnaviv_hw_init(gpu);
+}
+
 /*
  * Hangcheck detection for locked gpu:
  */
@@ -708,7 +714,7 @@ static void recover_worker(struct work_struct *work)
 	dev_err(gpu->dev, "hangcheck recover!\n");
 
 	mutex_lock(&dev->struct_mutex);
-	/* TODO gpu->funcs->recover(gpu); */
+	etnaviv_gpu_recover(gpu);
 	mutex_unlock(&dev->struct_mutex);
 
 	etnaviv_gpu_retire(gpu);

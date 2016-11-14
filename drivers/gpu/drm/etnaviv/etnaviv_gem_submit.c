@@ -277,6 +277,27 @@ static int submit_reloc(struct etnaviv_gem_submit *submit, void *stream,
 	return 0;
 }
 
+static int readback_reg_valid(unsigned reg)
+{
+	/*
+	 * 0x000..0x200:     ok
+	 * 0x200..0x400:     crash
+	 * 0x400..0x800:     ok
+	 * 0x800..0xa00:     crash
+	 * 0xa00..0xc00:     crash
+	 * 0xc00..0xe00:     crash
+	 * 0xe00..0x1000:    crash
+	 * everything above: crash
+	 */
+	if (reg >= 0x200 && reg < 400)
+		return 0;
+
+	if (reg >= 0x800)
+		return 0;
+
+	return 1;
+}
+
 static int submit_readback(struct etnaviv_gem_submit *submit,
 		struct etnaviv_cmdbuf *cmdbuf,
 		const struct drm_etnaviv_gem_submit_readback *readbacks,
@@ -300,6 +321,11 @@ static int submit_readback(struct etnaviv_gem_submit *submit,
 
 		if (r->flags > ETNA_READBACK_PERF) {
 			DRM_ERROR("invalid readback flags");
+			return -EINVAL;
+		}
+
+		if (!readback_reg_valid(r->reg)) {
+			DRM_ERROR("invalid readback reg (would cause crash)");
 			return -EINVAL;
 		}
 

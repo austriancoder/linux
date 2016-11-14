@@ -95,6 +95,8 @@ struct etnaviv_readback {
 
 struct etnaviv_event {
 	bool used;
+	unsigned int nr_readbacks;
+	struct etnaviv_readback *readbacks;
 	struct fence *fence;
 };
 

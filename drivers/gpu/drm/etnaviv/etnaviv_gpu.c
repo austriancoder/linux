@@ -1321,7 +1321,10 @@ int etnaviv_gpu_submit(struct etnaviv_gpu *gpu,
 
 	mutex_lock(&gpu->lock);
 
+	gpu->event[event].nr_readbacks = cmdbuf->nr_readbacks;
+	gpu->event[event].readbacks = cmdbuf->readbacks;
 	gpu->event[event].fence = fence;
+
 	submit->fence = fence->seqno;
 	gpu->active_fence = submit->fence;
 

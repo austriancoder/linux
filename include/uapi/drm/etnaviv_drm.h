@@ -150,6 +150,13 @@ struct drm_etnaviv_gem_submit_bo {
 	__u64 presumed;       /* in/out, presumed buffer address */
 };
 
+struct drm_etnaviv_gem_submit_readback {
+	__u32 readback_offset;/* in, offset from readback_bo */
+	__u32 readback_idx;   /* in, index of readback_bo buffer */
+	__u32 reg;            /* in, register to read */
+	__u32 flags;          /* in, needs to be 0 */
+};
+
 /* Each cmdstream submit consists of a table of buffers involved, and
  * one or more cmdstream buffers.  This allows for conditional execution
  * (context-restore), and IB buffers needed for per tile/bin draw cmds.
@@ -167,6 +174,9 @@ struct drm_etnaviv_gem_submit {
 	__u64 bos;            /* in, ptr to array of submit_bo's */
 	__u64 relocs;         /* in, ptr to array of submit_reloc's */
 	__u64 stream;         /* in, ptr to cmdstream */
+	__u64 readbacks;      /* in, ptr to array of submit_readback's */
+	__u32 nr_readbacks;   /* in, number of submit_readback's */
+	__u32 padding;
 };
 
 /* The normal way to synchronize with the GPU is just to CPU_PREP on

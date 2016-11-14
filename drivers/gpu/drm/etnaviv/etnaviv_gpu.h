@@ -87,6 +87,12 @@ struct etnaviv_chip_identity {
 	u8 varyings_count;
 };
 
+struct etnaviv_readback {
+	u32 *bo_vma;
+	u32 offset;
+	u32 reg;
+};
+
 struct etnaviv_event {
 	bool used;
 	struct fence *fence;
@@ -168,6 +174,9 @@ struct etnaviv_cmdbuf {
 	u32 exec_state;
 	/* per GPU in-flight list */
 	struct list_head node;
+	/* readback's attached to this command buffer */
+	unsigned int nr_readbacks;
+	struct etnaviv_readback *readbacks;
 	/* BOs attached to this command buffer */
 	unsigned int nr_bos;
 	struct etnaviv_vram_mapping *bo_map[0];

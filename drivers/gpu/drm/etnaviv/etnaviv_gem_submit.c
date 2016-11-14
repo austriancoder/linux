@@ -277,6 +277,40 @@ static int submit_reloc(struct etnaviv_gem_submit *submit, void *stream,
 	return 0;
 }
 
+static int submit_readback(struct etnaviv_gem_submit *submit,
+		struct etnaviv_cmdbuf *cmdbuf,
+		const struct drm_etnaviv_gem_submit_readback *readbacks,
+		u32 nr_readbacks)
+{
+	u32 i;
+
+	for (i = 0; i < nr_readbacks; i++) {
+		const struct drm_etnaviv_gem_submit_readback *r = readbacks + i;
+		struct etnaviv_gem_submit_bo *bo;
+		int ret;
+
+		ret = submit_bo(submit, r->readback_idx, &bo);
+		if (ret)
+			return ret;
+
+		if (r->readback_offset >= bo->obj->base.size - sizeof(u32)) {
+			DRM_ERROR("readback offset %u outside object", i);
+			return -EINVAL;
+		}
+
+		if (r->flags) {
+			DRM_ERROR("readback flags not 0");
+			return -EINVAL;
+		}
+
+		cmdbuf->readbacks[i].bo_vma = etnaviv_gem_vmap(&bo->obj->base);
+		cmdbuf->readbacks[i].offset = r->readback_offset;
+		cmdbuf->readbacks[i].reg = r->reg;
+	}
+
+	return 0;
+}
+
 static void submit_cleanup(struct etnaviv_gem_submit *submit)
 {
 	unsigned i;
@@ -298,6 +332,7 @@ int etnaviv_ioctl_gem_submit(struct drm_device *dev, void *data,
 	struct etnaviv_drm_private *priv = dev->dev_private;
 	struct drm_etnaviv_gem_submit *args = data;
 	struct drm_etnaviv_gem_submit_reloc *relocs;
+	struct drm_etnaviv_gem_submit_readback *readbacks;
 	struct drm_etnaviv_gem_submit_bo *bos;
 	struct etnaviv_gem_submit *submit;
 	struct etnaviv_cmdbuf *cmdbuf;
@@ -331,10 +366,11 @@ int etnaviv_ioctl_gem_submit(struct drm_device *dev, void *data,
 	 */
 	bos = drm_malloc_ab(args->nr_bos, sizeof(*bos));
 	relocs = drm_malloc_ab(args->nr_relocs, sizeof(*relocs));
+	readbacks = drm_malloc_ab(args->nr_readbacks, sizeof(*readbacks));
 	stream = drm_malloc_ab(1, args->stream_size);
 	cmdbuf = etnaviv_gpu_cmdbuf_new(gpu, ALIGN(args->stream_size, 8) + 8,
-					args->nr_bos, 0);
-	if (!bos || !relocs || !stream || !cmdbuf) {
+					args->nr_bos, args->nr_readbacks);
+	if (!bos || !relocs || !readbacks || !stream || !cmdbuf) {
 		ret = -ENOMEM;
 		goto err_submit_cmds;
 	}
@@ -351,6 +387,13 @@ int etnaviv_ioctl_gem_submit(struct drm_device *dev, void *data,
 
 	ret = copy_from_user(relocs, u64_to_user_ptr(args->relocs),
 			     args->nr_relocs * sizeof(*relocs));
+	if (ret) {
+		ret = -EFAULT;
+		goto err_submit_cmds;
+	}
+
+	ret = copy_from_user(readbacks, u64_to_user_ptr(args->readbacks),
+			     args->nr_readbacks * sizeof(*readbacks));
 	if (ret) {
 		ret = -EFAULT;
 		goto err_submit_cmds;
@@ -396,6 +439,10 @@ int etnaviv_ioctl_gem_submit(struct drm_device *dev, void *data,
 	if (ret)
 		goto out;
 
+	ret = submit_readback(submit, cmdbuf, readbacks, args->nr_readbacks);
+	if (ret)
+		goto out;
+
 	memcpy(cmdbuf->vaddr, stream, args->stream_size);
 	cmdbuf->user_size = ALIGN(args->stream_size, 8);
 
@@ -429,6 +476,8 @@ err_submit_cmds:
 		drm_free_large(bos);
 	if (relocs)
 		drm_free_large(relocs);
+	if (readbacks)
+		drm_free_large(readbacks);
 
 	return ret;
 }

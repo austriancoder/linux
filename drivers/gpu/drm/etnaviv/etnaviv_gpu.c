@@ -655,7 +655,7 @@ int etnaviv_gpu_init(struct etnaviv_gpu *gpu)
 	}
 
 	/* Create buffer: */
-	gpu->buffer = etnaviv_gpu_cmdbuf_new(gpu, PAGE_SIZE, 0);
+	gpu->buffer = etnaviv_gpu_cmdbuf_new(gpu, PAGE_SIZE, 0, 0);
 	if (!gpu->buffer) {
 		ret = -ENOMEM;
 		dev_err(gpu->dev, "could not create command buffer\n");
@@ -1114,14 +1114,20 @@ static void event_free(struct etnaviv_gpu *gpu, unsigned int event)
  */
 
 struct etnaviv_cmdbuf *etnaviv_gpu_cmdbuf_new(struct etnaviv_gpu *gpu, u32 size,
-	size_t nr_bos)
+	size_t nr_bos, size_t nr_readbacks)
 {
 	struct etnaviv_cmdbuf *cmdbuf;
+	struct etnaviv_readback *readbacks;
 	size_t sz = size_vstruct(nr_bos, sizeof(cmdbuf->bo_map[0]),
 				 sizeof(*cmdbuf));
 
 	cmdbuf = kzalloc(sz, GFP_KERNEL);
 	if (!cmdbuf)
+		goto fail;
+
+	sz = sizeof(*readbacks) * nr_readbacks;
+	readbacks = kzalloc(sz, GFP_KERNEL);
+	if (!readbacks)
 		goto fail;
 
 	if (gpu->mmu->version == ETNAVIV_IOMMU_V2)
@@ -1134,11 +1140,14 @@ struct etnaviv_cmdbuf *etnaviv_gpu_cmdbuf_new(struct etnaviv_gpu *gpu, u32 size,
 
 	cmdbuf->gpu = gpu;
 	cmdbuf->size = size;
+	cmdbuf->readbacks = readbacks;
+	cmdbuf->nr_readbacks = nr_readbacks;
 
 	return cmdbuf;
 
 fail:
 	kfree(cmdbuf);
+	kfree(readbacks);
 
 	return NULL;
 }
@@ -1148,6 +1157,7 @@ void etnaviv_gpu_cmdbuf_free(struct etnaviv_cmdbuf *cmdbuf)
 	etnaviv_iommu_put_cmdbuf_va(cmdbuf->gpu, cmdbuf);
 	dma_free_wc(cmdbuf->gpu->dev, cmdbuf->size, cmdbuf->vaddr,
 		    cmdbuf->paddr);
+	kfree(cmdbuf->readbacks);
 	kfree(cmdbuf);
 }
 

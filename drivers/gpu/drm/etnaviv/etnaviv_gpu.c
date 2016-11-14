@@ -1367,6 +1367,20 @@ out_pm_put:
 	return ret;
 }
 
+static void etnaviv_process_readbacks(struct etnaviv_gpu *gpu,
+		struct etnaviv_event *event)
+{
+	unsigned i;
+
+	for (i = 0; i < event->nr_readbacks; i++) {
+		const struct etnaviv_readback *readback = event->readbacks + i;
+		const u32 val = gpu_read(gpu, readback->reg);
+		u32 *bo = readback->bo_vma;
+
+		*(bo + readback->offset) = val;
+	}
+}
+
 /*
  * Init/Cleanup:
  */
@@ -1412,6 +1426,9 @@ static irqreturn_t irq_handler(int irq, void *data)
 			intr &= ~(1 << event);
 
 			dev_dbg(gpu->dev, "event %u\n", event);
+
+			if (gpu->event[event].nr_readbacks)
+				etnaviv_process_readbacks(gpu, &gpu->event[event]);
 
 			fence = gpu->event[event].fence;
 			gpu->event[event].fence = NULL;

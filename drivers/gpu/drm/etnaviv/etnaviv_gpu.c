@@ -1379,6 +1379,9 @@ static void etnaviv_process_readbacks(struct etnaviv_gpu *gpu,
 		const u32 val = gpu_read(gpu, readback->reg);
 		u32 *bo = readback->bo_vma;
 
+		if (readback->flags & ETNA_READBACK_PERF)
+			gpu_write(gpu, readback->perf_reg, readback->perf_value);
+
 		*(bo + readback->offset) = val;
 	}
 }

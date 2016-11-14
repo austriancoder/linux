@@ -150,11 +150,15 @@ struct drm_etnaviv_gem_submit_bo {
 	__u64 presumed;       /* in/out, presumed buffer address */
 };
 
+#define ETNA_READBACK_ONLY     0x0000
+#define ETNA_READBACK_PERF     0x0001
 struct drm_etnaviv_gem_submit_readback {
 	__u32 readback_offset;/* in, offset from readback_bo */
 	__u32 readback_idx;   /* in, index of readback_bo buffer */
 	__u32 reg;            /* in, register to read */
-	__u32 flags;          /* in, needs to be 0 */
+	__u32 flags;          /* in, ETNA_READBACK_* */
+	__u32 perf_reg;       /* in, register to write */
+	__u32 perf_value;     /* in, value to write */
 };
 
 /* Each cmdstream submit consists of a table of buffers involved, and

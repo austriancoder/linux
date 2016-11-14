@@ -221,7 +221,7 @@ int etnaviv_gpu_wait_obj_inactive(struct etnaviv_gpu *gpu,
 int etnaviv_gpu_submit(struct etnaviv_gpu *gpu,
 	struct etnaviv_gem_submit *submit, struct etnaviv_cmdbuf *cmdbuf);
 struct etnaviv_cmdbuf *etnaviv_gpu_cmdbuf_new(struct etnaviv_gpu *gpu,
-					      u32 size, size_t nr_bos);
+					      u32 size, size_t nr_bos, size_t nr_readbacks);
 void etnaviv_gpu_cmdbuf_free(struct etnaviv_cmdbuf *cmdbuf);
 int etnaviv_gpu_pm_get_sync(struct etnaviv_gpu *gpu);
 void etnaviv_gpu_pm_put(struct etnaviv_gpu *gpu);

@@ -333,7 +333,7 @@ int etnaviv_ioctl_gem_submit(struct drm_device *dev, void *data,
 	relocs = drm_malloc_ab(args->nr_relocs, sizeof(*relocs));
 	stream = drm_malloc_ab(1, args->stream_size);
 	cmdbuf = etnaviv_gpu_cmdbuf_new(gpu, ALIGN(args->stream_size, 8) + 8,
-					args->nr_bos);
+					args->nr_bos, 0);
 	if (!bos || !relocs || !stream || !cmdbuf) {
 		ret = -ENOMEM;
 		goto err_submit_cmds;

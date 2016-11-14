@@ -298,14 +298,17 @@ static int submit_readback(struct etnaviv_gem_submit *submit,
 			return -EINVAL;
 		}
 
-		if (r->flags) {
-			DRM_ERROR("readback flags not 0");
+		if (r->flags > ETNA_READBACK_PERF) {
+			DRM_ERROR("invalid readback flags");
 			return -EINVAL;
 		}
 
 		cmdbuf->readbacks[i].bo_vma = etnaviv_gem_vmap(&bo->obj->base);
 		cmdbuf->readbacks[i].offset = r->readback_offset;
 		cmdbuf->readbacks[i].reg = r->reg;
+		cmdbuf->readbacks[i].flags = r->flags;
+		cmdbuf->readbacks[i].perf_reg = r->perf_reg;
+		cmdbuf->readbacks[i].perf_value = r->perf_value;
 	}
 
 	return 0;

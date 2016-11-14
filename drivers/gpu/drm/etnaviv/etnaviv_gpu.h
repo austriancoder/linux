@@ -91,6 +91,9 @@ struct etnaviv_readback {
 	u32 *bo_vma;
 	u32 offset;
 	u32 reg;
+	u32 flags;
+	u32 perf_reg;
+	u32 perf_value;
 };
 
 struct etnaviv_event {

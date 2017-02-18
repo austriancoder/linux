@@ -87,9 +87,10 @@ void etnaviv_cmdbuf_suballoc_destroy(struct etnaviv_cmdbuf_suballoc *suballoc)
 
 struct etnaviv_cmdbuf *
 etnaviv_cmdbuf_new(struct etnaviv_cmdbuf_suballoc *suballoc, u32 size,
-		   size_t nr_bos)
+		   size_t nr_bos, size_t nr_perfs)
 {
 	struct etnaviv_cmdbuf *cmdbuf;
+	struct etnaviv_perf *perfs;
 	size_t sz = size_vstruct(nr_bos, sizeof(cmdbuf->bo_map[0]),
 				 sizeof(*cmdbuf));
 	int granule_offs, order, ret;
@@ -97,6 +98,13 @@ etnaviv_cmdbuf_new(struct etnaviv_cmdbuf_suballoc *suballoc, u32 size,
 	cmdbuf = kzalloc(sz, GFP_KERNEL);
 	if (!cmdbuf)
 		return NULL;
+
+	sz = sizeof(*perfs) * nr_perfs;
+	perfs = kzalloc(sz, GFP_KERNEL);
+	if (!perfs) {
+		kfree(cmdbuf);
+		return NULL;
+	}
 
 	cmdbuf->suballoc = suballoc;
 	cmdbuf->size = size;
@@ -122,6 +130,8 @@ retry:
 	mutex_unlock(&suballoc->lock);
 	cmdbuf->suballoc_offset = granule_offs * SUBALLOC_GRANULE;
 	cmdbuf->vaddr = suballoc->vaddr + cmdbuf->suballoc_offset;
+	cmdbuf->perfs = perfs;
+	cmdbuf->nr_perfs = nr_perfs;
 
 	return cmdbuf;
 }
@@ -139,6 +149,7 @@ void etnaviv_cmdbuf_free(struct etnaviv_cmdbuf *cmdbuf)
 	suballoc->free_space = 1;
 	mutex_unlock(&suballoc->lock);
 	wake_up_all(&suballoc->free_event);
+	kfree(cmdbuf->perfs);
 	kfree(cmdbuf);
 }
 

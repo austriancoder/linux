@@ -1368,6 +1368,20 @@ out_pm_put:
 	return ret;
 }
 
+static void etnaviv_process_perfs(struct etnaviv_gpu *gpu,
+		struct etnaviv_event *event)
+{
+	unsigned i;
+
+	for (i = 0; i < event->nr_perfs; i++) {
+		const struct etnaviv_perf *perf = event->perfs + i;
+		u32 *bo = perf->bo_vma;
+
+		gpu_write(gpu, perf->select_reg, perf->select_value);
+		*(bo + perf->offset) = gpu_read(gpu, perf->read_reg);
+	}
+}
+
 /*
  * Init/Cleanup:
  */
@@ -1413,6 +1427,9 @@ static irqreturn_t irq_handler(int irq, void *data)
 			intr &= ~(1 << event);
 
 			dev_dbg(gpu->dev, "event %u\n", event);
+
+			if (gpu->event[event].nr_perfs)
+				etnaviv_process_perfs(gpu, &gpu->event[event]);
 
 			fence = gpu->event[event].fence;
 			gpu->event[event].fence = NULL;

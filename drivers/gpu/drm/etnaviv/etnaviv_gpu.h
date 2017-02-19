@@ -89,6 +89,8 @@ struct etnaviv_chip_identity {
 
 struct etnaviv_event {
 	bool used;
+	unsigned int nr_perfs;
+	struct etnaviv_perf *perfs;
 	struct dma_fence *fence;
 };
 

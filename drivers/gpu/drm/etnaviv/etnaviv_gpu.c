@@ -124,6 +124,10 @@ int etnaviv_gpu_get_param(struct etnaviv_gpu *gpu, u32 param, u64 *value)
 		*value = gpu->identity.varyings_count;
 		break;
 
+	case ETNAVIV_PARAM_PERF:
+		*value = 1;
+		break;
+
 	default:
 		DBG("%s: invalid param: %u", dev_name(gpu->dev), param);
 		return -EINVAL;

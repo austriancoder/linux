@@ -19,6 +19,7 @@
 #include "etnaviv_drv.h"
 #include "etnaviv_gpu.h"
 #include "etnaviv_gem.h"
+#include "state_hi.xml.h"
 
 /*
  * Cmdstream submission:
@@ -278,6 +279,62 @@ static int submit_reloc(struct etnaviv_gem_submit *submit, void *stream,
 	return 0;
 }
 
+static int perf_select_reg_valid(u32 reg)
+{
+	return reg >= VIVS_MC_PROFILE_CONFIG0 && reg <= VIVS_MC_PROFILE_CONFIG3;
+}
+
+static int perf_read_reg_valid(u32 reg)
+{
+	return reg >= VIVS_MC_PROFILE_RA_READ && reg <= VIVS_MC_PROFILE_HI_READ;
+}
+
+static int submit_perf(struct etnaviv_gem_submit *submit,
+		struct etnaviv_cmdbuf *cmdbuf,
+		const struct drm_etnaviv_gem_submit_perf *perfs,
+		u32 nr_perfs)
+{
+	u32 i;
+
+	for (i = 0; i < nr_perfs; i++) {
+		const struct drm_etnaviv_gem_submit_perf *p = perfs + i;
+		struct etnaviv_gem_submit_bo *bo;
+		int ret;
+
+		ret = submit_bo(submit, p->perf_idx, &bo);
+		if (ret)
+			return ret;
+
+		if (p->perf_offset >= bo->obj->base.size - sizeof(u32)) {
+			DRM_ERROR("perf offset %u outside object", i);
+			return -EINVAL;
+		}
+
+		if (p->flags) {
+			DRM_ERROR("perf flags not 0");
+			return -EINVAL;
+		}
+
+		if (!perf_select_reg_valid(p->select_reg)) {
+			DRM_ERROR("perf select reg (%x) not valid", p->select_reg);
+			return -EINVAL;
+		}
+
+		if (!perf_read_reg_valid(p->read_reg)) {
+			DRM_ERROR("perf read reg (%x) not valid", p->read_reg);
+			return -EINVAL;
+		}
+
+		cmdbuf->perfs[i].bo_vma = etnaviv_gem_vmap(&bo->obj->base);
+		cmdbuf->perfs[i].offset = p->perf_offset;
+		cmdbuf->perfs[i].select_reg = p->select_reg;
+		cmdbuf->perfs[i].select_value = p->select_value;
+		cmdbuf->perfs[i].read_reg = p->read_reg;
+	}
+
+	return 0;
+}
+
 static void submit_cleanup(struct etnaviv_gem_submit *submit)
 {
 	unsigned i;
@@ -299,6 +356,7 @@ int etnaviv_ioctl_gem_submit(struct drm_device *dev, void *data,
 	struct etnaviv_drm_private *priv = dev->dev_private;
 	struct drm_etnaviv_gem_submit *args = data;
 	struct drm_etnaviv_gem_submit_reloc *relocs;
+	struct drm_etnaviv_gem_submit_perf *perfs;
 	struct drm_etnaviv_gem_submit_bo *bos;
 	struct etnaviv_gem_submit *submit;
 	struct etnaviv_cmdbuf *cmdbuf;
@@ -332,11 +390,12 @@ int etnaviv_ioctl_gem_submit(struct drm_device *dev, void *data,
 	 */
 	bos = drm_malloc_ab(args->nr_bos, sizeof(*bos));
 	relocs = drm_malloc_ab(args->nr_relocs, sizeof(*relocs));
+	perfs = drm_malloc_ab(args->nr_perfs, sizeof(*perfs));
 	stream = drm_malloc_ab(1, args->stream_size);
 	cmdbuf = etnaviv_cmdbuf_new(gpu->cmdbuf_suballoc,
 				    ALIGN(args->stream_size, 8) + 8,
-				    args->nr_bos, 0);
-	if (!bos || !relocs || !stream || !cmdbuf) {
+				    args->nr_bos, args->nr_perfs);
+	if (!bos || !relocs || !perfs || !stream || !cmdbuf) {
 		ret = -ENOMEM;
 		goto err_submit_cmds;
 	}
@@ -353,6 +412,13 @@ int etnaviv_ioctl_gem_submit(struct drm_device *dev, void *data,
 
 	ret = copy_from_user(relocs, u64_to_user_ptr(args->relocs),
 			     args->nr_relocs * sizeof(*relocs));
+	if (ret) {
+		ret = -EFAULT;
+		goto err_submit_cmds;
+	}
+
+	ret = copy_from_user(perfs, u64_to_user_ptr(args->perfs),
+				 args->nr_perfs * sizeof(*perfs));
 	if (ret) {
 		ret = -EFAULT;
 		goto err_submit_cmds;
@@ -398,6 +464,10 @@ int etnaviv_ioctl_gem_submit(struct drm_device *dev, void *data,
 	if (ret)
 		goto out;
 
+	ret = submit_perf(submit, cmdbuf, perfs, args->nr_perfs);
+	if (ret)
+		goto out;
+
 	memcpy(cmdbuf->vaddr, stream, args->stream_size);
 	cmdbuf->user_size = ALIGN(args->stream_size, 8);
 
@@ -431,6 +501,8 @@ err_submit_cmds:
 		drm_free_large(bos);
 	if (relocs)
 		drm_free_large(relocs);
+	if (perfs)
+		drm_free_large(perfs);
 
 	return ret;
 }

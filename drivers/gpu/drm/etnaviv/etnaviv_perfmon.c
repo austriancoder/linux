@@ -57,6 +57,25 @@ static u32 perf_reg_read(struct etnaviv_gpu *gpu,
 	return gpu_read(gpu, domain->profile_read);
 }
 
+static u32 pipe_reg_read(struct etnaviv_gpu *gpu,
+	const struct etnaviv_pm_domain *domain,
+	const struct etnaviv_pm_signal *signal)
+{
+	u32 clock = gpu_read(gpu, VIVS_HI_CLOCK_CONTROL);
+	u32 value = 0;
+	unsigned i;
+
+	for (i = 0; i < gpu->identity.pixel_pipes; i++) {
+		clock &= ~(VIVS_HI_CLOCK_CONTROL_DEBUG_PIXEL_PIPE__MASK);
+		clock |= VIVS_HI_CLOCK_CONTROL_DEBUG_PIXEL_PIPE(i);
+		gpu_write(gpu, VIVS_HI_CLOCK_CONTROL, clock);
+		gpu_write(gpu, domain->profile_config, signal->data);
+		value += gpu_read(gpu, domain->profile_read);
+	}
+
+	return value;
+}
+
 static const struct etnaviv_pm_domain doms[] = {
 	{
 		.name = "HI",
@@ -88,6 +107,39 @@ static const struct etnaviv_pm_domain doms[] = {
 				"AXI_CYCLES_WRITE_DATA_STALLED",
 				VIVS_MC_PROFILE_CONFIG2_HI_AXI_CYCLES_WRITE_DATA_STALLED,
 				&perf_reg_read
+			}
+		}
+	},
+	{
+		.name = "PE",
+		.profile_read = VIVS_MC_PROFILE_PE_READ,
+		.profile_config = VIVS_MC_PROFILE_CONFIG0,
+		.nr_signals = 5,
+		.signal = (const struct etnaviv_pm_signal[]) {
+			{
+				"PIXEL_COUNT_KILLED_BY_COLOR_PIPE",
+				VIVS_MC_PROFILE_CONFIG0_PE_PIXEL_COUNT_KILLED_BY_COLOR_PIPE,
+				&pipe_reg_read
+			},
+			{
+				"PIXEL_COUNT_KILLED_BY_DEPTH_PIPE",
+				VIVS_MC_PROFILE_CONFIG0_PE_PIXEL_COUNT_KILLED_BY_DEPTH_PIPE,
+				&pipe_reg_read
+			},
+			{
+				"PIXEL_COUNT_DRAWN_BY_COLOR_PIPE",
+				VIVS_MC_PROFILE_CONFIG0_PE_PIXEL_COUNT_DRAWN_BY_COLOR_PIPE,
+				&pipe_reg_read
+			},
+			{
+				"PIXEL_COUNT_DRAWN_BY_DEPTH_PIPE",
+				VIVS_MC_PROFILE_CONFIG0_PE_PIXEL_COUNT_DRAWN_BY_DEPTH_PIPE,
+				&pipe_reg_read
+			},
+			{
+				"PIXELS_RENDERED_2D",
+				VIVS_MC_PROFILE_CONFIG0_PE_PIXELS_RENDERED_2D,
+				&pipe_reg_read
 			}
 		}
 	}

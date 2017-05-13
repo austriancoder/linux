@@ -89,6 +89,8 @@ struct etnaviv_chip_identity {
 
 struct etnaviv_event {
 	struct dma_fence *fence;
+
+	void (*sync_point)(struct etnaviv_gpu *gpu, struct etnaviv_event *event);
 };
 
 struct etnaviv_cmdbuf_suballoc;
@@ -134,6 +136,10 @@ struct etnaviv_gpu {
 
 	/* worker for handling active-list retiring: */
 	struct work_struct retire_work;
+
+	/* worker for handling performance monitor requests: */
+	struct work_struct pmrs_work;
+	int pmrs_event;
 
 	void __iomem *mmio;
 	int irq;

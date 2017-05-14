@@ -83,3 +83,18 @@ int etnaviv_pm_query_sig(struct etnaviv_gpu *gpu,
 
 	return 0;
 }
+
+int etnaviv_pm_req_validate(const struct drm_etnaviv_gem_submit_pmr *r)
+{
+	const struct etnaviv_pm_domain *dom;
+
+	if (r->domain >= ARRAY_SIZE(doms))
+		return -EINVAL;
+
+	dom = &doms[r->domain];
+
+	if (r->signal > dom->nr_signals)
+		return -EINVAL;
+
+	return 0;
+}

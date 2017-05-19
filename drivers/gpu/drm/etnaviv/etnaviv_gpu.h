@@ -92,6 +92,10 @@ struct etnaviv_event {
 	struct dma_fence *fence;
 
 	void (*sync_point)(struct etnaviv_gpu *gpu, struct etnaviv_event *event);
+
+	/* performance monitor requests */
+	unsigned int nr_pmrs;
+	struct etnaviv_perfmon_request *pmrs;
 };
 
 struct etnaviv_cmdbuf_suballoc;

@@ -1313,12 +1313,47 @@ void etnaviv_gpu_pm_put(struct etnaviv_gpu *gpu)
 	pm_runtime_put_autosuspend(gpu->dev);
 }
 
+static void sync_point_perfmon_sample(struct etnaviv_gpu *gpu,
+	struct etnaviv_event *event, unsigned int flags)
+{
+	unsigned int i;
+
+	for (i = 0; i < event->nr_pmrs; i++) {
+		const struct etnaviv_perfmon_request *pmr = event->pmrs + i;
+
+		if (pmr->flags == flags)
+			etnaviv_perfmon_process(gpu, pmr);
+	}
+}
+
+static void sync_point_perfmon_sample_pre(struct etnaviv_gpu *gpu,
+	struct etnaviv_event *event)
+{
+	sync_point_perfmon_sample(gpu, event, ETNA_PM_PROCESS_PRE);
+}
+
+static void sync_point_perfmon_sample_post(struct etnaviv_gpu *gpu,
+	struct etnaviv_event *event)
+{
+	unsigned int i;
+
+	sync_point_perfmon_sample(gpu, event, ETNA_PM_PROCESS_POST);
+
+	for (i = 0; i < event->nr_pmrs; i++) {
+		const struct etnaviv_perfmon_request *pmr = event->pmrs + i;
+
+		*pmr->bo_vma = pmr->sequence;
+	}
+}
+
+
 /* add bo's to gpu's ring, and kick gpu: */
 int etnaviv_gpu_submit(struct etnaviv_gpu *gpu,
 	struct etnaviv_gem_submit *submit, struct etnaviv_cmdbuf *cmdbuf)
 {
 	struct dma_fence *fence;
 	unsigned int event, i;
+	unsigned int sync[2] = { ~0U, ~0U };
 	int ret;
 
 	ret = etnaviv_gpu_pm_get_sync(gpu);
@@ -1341,6 +1376,39 @@ int etnaviv_gpu_submit(struct etnaviv_gpu *gpu,
 		goto out_pm_put;
 	}
 
+	/*
+	 * if there are performance monitor requests we need to have a sync point to
+	 * re-configure gpu and process ETNA_PM_PROCESS_PRE requests.
+	 */
+	if (cmdbuf->nr_pmrs) {
+		sync[0] = event_alloc(gpu);
+
+		if (unlikely(sync[0] == ~0U)) {
+			DRM_ERROR("no free events for sync point 0\n");
+			event_free(gpu, event);
+			ret = -EBUSY;
+			goto out_pm_put;
+		}
+	}
+
+	/*
+	 * if there are performance monitor requests we need to have sync point to
+	 * re-configure gpu, process ETNA_PM_PROCESS_POST requests and update the
+	 * sequence number for userspace.
+	 */
+	if (cmdbuf->nr_pmrs) {
+		sync[1] = event_alloc(gpu);
+
+		if (unlikely(sync[1] == ~0U)) {
+			DRM_ERROR("no free events for sync point 1\n");
+			event_free(gpu, event);
+			if (unlikely(sync[0] == ~0U))
+				event_free(gpu, sync[0]);
+			ret = -EBUSY;
+			goto out_pm_put;
+		}
+	}
+
 	mutex_lock(&gpu->lock);
 
 	fence = etnaviv_gpu_fence_alloc(gpu);
@@ -1360,7 +1428,21 @@ int etnaviv_gpu_submit(struct etnaviv_gpu *gpu,
 		gpu->lastctx = cmdbuf->ctx;
 	}
 
+	if (sync[0] != ~0U) {
+		gpu->event[sync[0]].sync_point = &sync_point_perfmon_sample_pre;
+		gpu->event[sync[0]].nr_pmrs = cmdbuf->nr_pmrs;
+		gpu->event[sync[0]].pmrs = cmdbuf->pmrs;
+		etnaviv_sync_point_queue(gpu, sync[0]);
+	}
+
 	etnaviv_buffer_queue(gpu, event, cmdbuf);
+
+	if (sync[1] != ~0U) {
+		gpu->event[sync[1]].sync_point = &sync_point_perfmon_sample_post;
+		gpu->event[sync[1]].nr_pmrs = cmdbuf->nr_pmrs;
+		gpu->event[sync[1]].pmrs = cmdbuf->pmrs;
+		etnaviv_sync_point_queue(gpu, sync[1]);
+	}
 
 	cmdbuf->fence = fence;
 	list_add_tail(&cmdbuf->node, &gpu->active_cmd_list);
@@ -1455,20 +1537,22 @@ static irqreturn_t irq_handler(int irq, void *data)
 				etnaviv_process_sync_point(gpu, &gpu->event[event]);
 
 			fence = gpu->event[event].fence;
-			gpu->event[event].fence = NULL;
-			dma_fence_signal(fence);
+			if (fence) {
+				gpu->event[event].fence = NULL;
+				dma_fence_signal(fence);
 
-			/*
-			 * Events can be processed out of order.  Eg,
-			 * - allocate and queue event 0
-			 * - allocate event 1
-			 * - event 0 completes, we process it
-			 * - allocate and queue event 0
-			 * - event 1 and event 0 complete
-			 * we can end up processing event 0 first, then 1.
-			 */
-			if (fence_after(fence->seqno, gpu->completed_fence))
-				gpu->completed_fence = fence->seqno;
+				/*
+				 * Events can be processed out of order.  Eg,
+				 * - allocate and queue event 0
+				 * - allocate event 1
+				 * - event 0 completes, we process it
+				 * - allocate and queue event 0
+				 * - event 1 and event 0 complete
+				 * we can end up processing event 0 first, then 1.
+				 */
+				if (fence_after(fence->seqno, gpu->completed_fence))
+					gpu->completed_fence = fence->seqno;
+			}
 
 			event_free(gpu, event);
 		}

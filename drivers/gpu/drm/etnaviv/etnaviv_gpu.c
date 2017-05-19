@@ -1156,6 +1156,7 @@ static unsigned int event_alloc(struct etnaviv_gpu *gpu)
 	/* find first free event */
 	for (i = 0; i < ARRAY_SIZE(gpu->event); i++) {
 		if (gpu->event[i].used == false) {
+			memset(&gpu->event[i], 0, sizeof(struct etnaviv_event));
 			gpu->event[i].used = true;
 			event = i;
 			break;
@@ -1350,7 +1351,6 @@ int etnaviv_gpu_submit(struct etnaviv_gpu *gpu,
 	}
 
 	gpu->event[event].fence = fence;
-	gpu->event[event].sync_point = NULL;
 	submit->fence = dma_fence_get(fence);
 	gpu->active_fence = submit->fence->seqno;
 

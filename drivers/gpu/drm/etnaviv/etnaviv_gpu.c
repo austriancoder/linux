@@ -1335,6 +1335,13 @@ static void sync_point_perfmon_sample(struct etnaviv_gpu *gpu,
 static void sync_point_perfmon_sample_pre(struct etnaviv_gpu *gpu,
 	struct etnaviv_event *event)
 {
+	u32 val;
+
+	/* disable clock gating */
+	val = gpu_read(gpu, VIVS_PM_POWER_CONTROLS);
+	val &= ~VIVS_PM_POWER_CONTROLS_ENABLE_MODULE_CLOCK_GATING;
+	gpu_write(gpu, VIVS_PM_POWER_CONTROLS, val);
+
 	sync_point_perfmon_sample(gpu, event, ETNA_PM_PROCESS_PRE);
 }
 
@@ -1343,6 +1350,7 @@ static void sync_point_perfmon_sample_post(struct etnaviv_gpu *gpu,
 {
 	const struct etnaviv_cmdbuf *cmdbuf = event->cmdbuf;
 	unsigned int i;
+	u32 val;
 
 	sync_point_perfmon_sample(gpu, event, ETNA_PM_PROCESS_POST);
 
@@ -1351,6 +1359,11 @@ static void sync_point_perfmon_sample_post(struct etnaviv_gpu *gpu,
 
 		*pmr->bo_vma = pmr->sequence;
 	}
+
+	/* enable clock gating */
+	val = gpu_read(gpu, VIVS_PM_POWER_CONTROLS);
+	val |= VIVS_PM_POWER_CONTROLS_ENABLE_MODULE_CLOCK_GATING;
+	gpu_write(gpu, VIVS_PM_POWER_CONTROLS, val);
 }
 
 

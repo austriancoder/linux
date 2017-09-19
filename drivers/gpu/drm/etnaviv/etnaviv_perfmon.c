@@ -196,7 +196,7 @@ static const struct etnaviv_pm_domain doms_3d[] = {
 		.name = "PE",
 		.profile_read = VIVS_MC_PROFILE_PE_READ,
 		.profile_config = VIVS_MC_PROFILE_CONFIG0,
-		.nr_signals = 5,
+		.nr_signals = 4,
 		.signal = (const struct etnaviv_pm_signal[]) {
 			{
 				"PIXEL_COUNT_KILLED_BY_COLOR_PIPE",
@@ -216,11 +216,6 @@ static const struct etnaviv_pm_domain doms_3d[] = {
 			{
 				"PIXEL_COUNT_DRAWN_BY_DEPTH_PIPE",
 				VIVS_MC_PROFILE_CONFIG0_PE_PIXEL_COUNT_DRAWN_BY_DEPTH_PIPE,
-				&pipe_reg_read
-			},
-			{
-				"PIXELS_RENDERED_2D",
-				VIVS_MC_PROFILE_CONFIG0_PE_PIXELS_RENDERED_2D,
 				&pipe_reg_read
 			}
 		}

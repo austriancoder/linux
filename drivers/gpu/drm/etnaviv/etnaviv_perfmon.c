@@ -26,8 +26,8 @@ struct etnaviv_pm_signal {
 	u32 data;
 
 	u32 (*sample)(struct etnaviv_gpu *gpu,
-	              const struct etnaviv_pm_domain *domain,
-	              const struct etnaviv_pm_signal *signal);
+				  const struct etnaviv_pm_domain *domain,
+				  const struct etnaviv_pm_signal *signal);
 };
 
 struct etnaviv_pm_domain {
@@ -39,6 +39,11 @@ struct etnaviv_pm_domain {
 
 	u8 nr_signals;
 	const struct etnaviv_pm_signal *signal;
+};
+
+struct etnaviv_pm_domain_meta {
+	const struct etnaviv_pm_domain *dom;
+	u32 nr_domains;
 };
 
 static u32 simple_reg_read(struct etnaviv_gpu *gpu,
@@ -81,7 +86,79 @@ static u32 pipe_reg_read(struct etnaviv_gpu *gpu,
 	return value;
 }
 
-static const struct etnaviv_pm_domain doms[] = {
+static const struct etnaviv_pm_domain doms_2d[] = {
+	{
+		.name = "HI",
+		.profile_read = VIVS_MC_PROFILE_HI_READ,
+		.profile_config = VIVS_MC_PROFILE_CONFIG2,
+		.nr_signals = 5,
+		.signal = (const struct etnaviv_pm_signal[]) {
+			{
+				"TOTAL_CYCLES",
+				VIVS_HI_PROFILE_TOTAL_CYCLES,
+				&simple_reg_read
+			},
+			{
+				"IDLE_CYCLES",
+				VIVS_HI_PROFILE_IDLE_CYCLES,
+				&simple_reg_read
+			},
+			{
+				"AXI_CYCLES_READ_REQUEST_STALLED",
+				VIVS_MC_PROFILE_CONFIG2_HI_AXI_CYCLES_READ_REQUEST_STALLED,
+				&perf_reg_read
+			},
+			{
+				"AXI_CYCLES_WRITE_REQUEST_STALLED",
+				VIVS_MC_PROFILE_CONFIG2_HI_AXI_CYCLES_WRITE_REQUEST_STALLED,
+				&perf_reg_read
+			},
+			{
+				"AXI_CYCLES_WRITE_DATA_STALLED",
+				VIVS_MC_PROFILE_CONFIG2_HI_AXI_CYCLES_WRITE_DATA_STALLED,
+				&perf_reg_read
+			}
+		}
+	},
+	{
+		.name = "PE",
+		.profile_read = VIVS_MC_PROFILE_PE_READ,
+		.profile_config = VIVS_MC_PROFILE_CONFIG0,
+		.nr_signals = 5,
+		.signal = (const struct etnaviv_pm_signal[]) {
+			{
+				"PIXELS_RENDERED_2D",
+				VIVS_MC_PROFILE_CONFIG0_PE_PIXELS_RENDERED_2D,
+				&pipe_reg_read
+			}
+		}
+	},
+	{
+		.name = "MC",
+		.profile_read = VIVS_MC_PROFILE_MC_READ,
+		.profile_config = VIVS_MC_PROFILE_CONFIG2,
+		.nr_signals = 3,
+		.signal = (const struct etnaviv_pm_signal[]) {
+			{
+				"TOTAL_READ_REQ_8B_FROM_PIPELINE",
+				VIVS_MC_PROFILE_CONFIG2_MC_TOTAL_READ_REQ_8B_FROM_PIPELINE,
+				&perf_reg_read
+			},
+			{
+				"TOTAL_READ_REQ_8B_FROM_IP",
+				VIVS_MC_PROFILE_CONFIG2_MC_TOTAL_READ_REQ_8B_FROM_IP,
+				&perf_reg_read
+			},
+			{
+				"TOTAL_WRITE_REQ_8B_FROM_PIPELINE",
+				VIVS_MC_PROFILE_CONFIG2_MC_TOTAL_WRITE_REQ_8B_FROM_PIPELINE,
+				&perf_reg_read
+			}
+		}
+	}
+};
+
+static const struct etnaviv_pm_domain doms_3d[] = {
 	{
 		.name = "HI",
 		.profile_read = VIVS_MC_PROFILE_HI_READ,
@@ -378,22 +455,42 @@ static const struct etnaviv_pm_domain doms[] = {
 	}
 };
 
+static const struct etnaviv_pm_domain doms_vg[] = {
+};
+
+
+static const struct etnaviv_pm_domain_meta doms_meta[] = {
+	{
+		.nr_domains = ARRAY_SIZE(doms_3d),
+		.dom = &doms_3d[0]
+	},
+	{
+		.nr_domains = ARRAY_SIZE(doms_2d),
+		.dom = &doms_2d[0]
+	},
+	{
+		.nr_domains = ARRAY_SIZE(doms_vg),
+		.dom = &doms_vg[0]
+	}
+};
+
 int etnaviv_pm_query_dom(struct etnaviv_gpu *gpu,
 	struct drm_etnaviv_pm_domain *domain)
 {
+	const struct etnaviv_pm_domain_meta *meta = &doms_meta[domain->pipe];
 	const struct etnaviv_pm_domain *dom;
 
-	if (domain->iter >= ARRAY_SIZE(doms))
+	if (domain->iter >= meta->nr_domains)
 		return -EINVAL;
 
-	dom = &doms[domain->iter];
+	dom = meta->dom + domain->iter;
 
 	domain->id = domain->iter;
 	domain->nr_signals = dom->nr_signals;
 	strncpy(domain->name, dom->name, sizeof(domain->name));
 
 	domain->iter++;
-	if (domain->iter == ARRAY_SIZE(doms))
+	if (domain->iter == ARRAY_SIZE(doms_3d))
 		domain->iter = 0xff;
 
 	return 0;
@@ -402,13 +499,14 @@ int etnaviv_pm_query_dom(struct etnaviv_gpu *gpu,
 int etnaviv_pm_query_sig(struct etnaviv_gpu *gpu,
 	struct drm_etnaviv_pm_signal *signal)
 {
+	const struct etnaviv_pm_domain_meta *meta = &doms_meta[signal->pipe];
 	const struct etnaviv_pm_domain *dom;
 	const struct etnaviv_pm_signal *sig;
 
-	if (signal->domain >= ARRAY_SIZE(doms))
+	if (signal->domain >= meta->nr_domains)
 		return -EINVAL;
 
-	dom = &doms[signal->domain];
+	dom = meta->dom + signal->domain;
 
 	if (signal->iter > dom->nr_signals)
 		return -EINVAL;
@@ -425,14 +523,16 @@ int etnaviv_pm_query_sig(struct etnaviv_gpu *gpu,
 	return 0;
 }
 
-int etnaviv_pm_req_validate(const struct drm_etnaviv_gem_submit_pmr *r)
+int etnaviv_pm_req_validate(const struct drm_etnaviv_gem_submit_pmr *r,
+	u32 exec_state)
 {
+	const struct etnaviv_pm_domain_meta *meta = &doms_meta[exec_state];
 	const struct etnaviv_pm_domain *dom;
 
-	if (r->domain >= ARRAY_SIZE(doms))
+	if (r->domain >= meta->nr_domains)
 		return -EINVAL;
 
-	dom = &doms[r->domain];
+	dom = meta->dom + r->domain;
 
 	if (r->signal > dom->nr_signals)
 		return -EINVAL;
@@ -443,12 +543,13 @@ int etnaviv_pm_req_validate(const struct drm_etnaviv_gem_submit_pmr *r)
 void etnaviv_perfmon_process(struct etnaviv_gpu *gpu,
 	const struct etnaviv_perfmon_request *pmr)
 {
+	const struct etnaviv_pm_domain_meta *meta = &doms_meta[gpu->exec_state];
 	const struct etnaviv_pm_domain *dom;
 	const struct etnaviv_pm_signal *sig;
 	u32 *bo = pmr->bo_vma;
 	u32 val;
 
-	dom = &doms[pmr->domain];
+	dom = meta->dom + pmr->domain;
 	sig = &dom->signal[pmr->signal];
 	val = sig->sample(gpu, dom, sig);
 

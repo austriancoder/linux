@@ -316,7 +316,7 @@ static int submit_perfmon_validate(struct etnaviv_gem_submit *submit,
 			return -EINVAL;
 		}
 
-		if (etnaviv_pm_req_validate(r)) {
+		if (etnaviv_pm_req_validate(r, cmdbuf->exec_state)) {
 			DRM_ERROR("perfmon request: domain or signal not valid");
 			return -EINVAL;
 		}

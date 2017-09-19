@@ -421,8 +421,7 @@ static void etnaviv_gpu_update_clock(struct etnaviv_gpu *gpu)
 			     gpu->base_rate_shader >> gpu->freq_scale);
 	} else {
 		unsigned int fscale = 1 << (6 - gpu->freq_scale);
-		u32 clock = VIVS_HI_CLOCK_CONTROL_DISABLE_DEBUG_REGISTERS |
-			    VIVS_HI_CLOCK_CONTROL_FSCALE_VAL(fscale);
+		u32 clock = VIVS_HI_CLOCK_CONTROL_FSCALE_VAL(fscale);
 
 		etnaviv_gpu_load_clock(gpu, clock);
 	}
@@ -601,6 +600,7 @@ static void etnaviv_gpu_setup_pulse_eater(struct etnaviv_gpu *gpu)
 
 static void etnaviv_gpu_hw_init(struct etnaviv_gpu *gpu)
 {
+	u32 val;
 	u16 prefetch;
 
 	if ((etnaviv_is_model_rev(gpu, GC320, 0x5007) ||
@@ -620,6 +620,11 @@ static void etnaviv_gpu_hw_init(struct etnaviv_gpu *gpu)
 
 	/* enable module-level clock gating */
 	etnaviv_gpu_enable_mlcg(gpu);
+
+	/* disable debug register */
+	val = gpu_read(gpu, VIVS_HI_CLOCK_CONTROL);
+	val |= VIVS_HI_CLOCK_CONTROL_DISABLE_DEBUG_REGISTERS;
+	gpu_write(gpu, VIVS_HI_CLOCK_CONTROL, val);
 
 	/*
 	 * Update GPU AXI cache atttribute to "cacheable, no allocate".

@@ -86,78 +86,6 @@ static u32 pipe_reg_read(struct etnaviv_gpu *gpu,
 	return value;
 }
 
-static const struct etnaviv_pm_domain doms_2d[] = {
-	{
-		.name = "HI",
-		.profile_read = VIVS_MC_PROFILE_HI_READ,
-		.profile_config = VIVS_MC_PROFILE_CONFIG2,
-		.nr_signals = 5,
-		.signal = (const struct etnaviv_pm_signal[]) {
-			{
-				"TOTAL_CYCLES",
-				VIVS_HI_PROFILE_TOTAL_CYCLES,
-				&simple_reg_read
-			},
-			{
-				"IDLE_CYCLES",
-				VIVS_HI_PROFILE_IDLE_CYCLES,
-				&simple_reg_read
-			},
-			{
-				"AXI_CYCLES_READ_REQUEST_STALLED",
-				VIVS_MC_PROFILE_CONFIG2_HI_AXI_CYCLES_READ_REQUEST_STALLED,
-				&perf_reg_read
-			},
-			{
-				"AXI_CYCLES_WRITE_REQUEST_STALLED",
-				VIVS_MC_PROFILE_CONFIG2_HI_AXI_CYCLES_WRITE_REQUEST_STALLED,
-				&perf_reg_read
-			},
-			{
-				"AXI_CYCLES_WRITE_DATA_STALLED",
-				VIVS_MC_PROFILE_CONFIG2_HI_AXI_CYCLES_WRITE_DATA_STALLED,
-				&perf_reg_read
-			}
-		}
-	},
-	{
-		.name = "PE",
-		.profile_read = VIVS_MC_PROFILE_PE_READ,
-		.profile_config = VIVS_MC_PROFILE_CONFIG0,
-		.nr_signals = 5,
-		.signal = (const struct etnaviv_pm_signal[]) {
-			{
-				"PIXELS_RENDERED_2D",
-				VIVS_MC_PROFILE_CONFIG0_PE_PIXELS_RENDERED_2D,
-				&pipe_reg_read
-			}
-		}
-	},
-	{
-		.name = "MC",
-		.profile_read = VIVS_MC_PROFILE_MC_READ,
-		.profile_config = VIVS_MC_PROFILE_CONFIG2,
-		.nr_signals = 3,
-		.signal = (const struct etnaviv_pm_signal[]) {
-			{
-				"TOTAL_READ_REQ_8B_FROM_PIPELINE",
-				VIVS_MC_PROFILE_CONFIG2_MC_TOTAL_READ_REQ_8B_FROM_PIPELINE,
-				&perf_reg_read
-			},
-			{
-				"TOTAL_READ_REQ_8B_FROM_IP",
-				VIVS_MC_PROFILE_CONFIG2_MC_TOTAL_READ_REQ_8B_FROM_IP,
-				&perf_reg_read
-			},
-			{
-				"TOTAL_WRITE_REQ_8B_FROM_PIPELINE",
-				VIVS_MC_PROFILE_CONFIG2_MC_TOTAL_WRITE_REQ_8B_FROM_PIPELINE,
-				&perf_reg_read
-			}
-		}
-	}
-};
-
 static const struct etnaviv_pm_domain doms_3d[] = {
 	{
 		.name = "HI",
@@ -448,6 +376,22 @@ static const struct etnaviv_pm_domain doms_3d[] = {
 			}
 		}
 	}
+};
+
+static const struct etnaviv_pm_domain doms_2d[] = {
+    {
+        .name = "PE",
+        .profile_read = VIVS_MC_PROFILE_PE_READ,
+        .profile_config = VIVS_MC_PROFILE_CONFIG0,
+        .nr_signals = 5,
+        .signal = (const struct etnaviv_pm_signal[]) {
+            {
+                "PIXELS_RENDERED_2D",
+                VIVS_MC_PROFILE_CONFIG0_PE_PIXELS_RENDERED_2D,
+                &pipe_reg_read
+            }
+        }
+    }
 };
 
 static const struct etnaviv_pm_domain doms_vg[] = {

@@ -421,8 +421,9 @@ static void etnaviv_gpu_update_clock(struct etnaviv_gpu *gpu)
 			     gpu->base_rate_shader >> gpu->freq_scale);
 	} else {
 		unsigned int fscale = 1 << (6 - gpu->freq_scale);
-		u32 clock = VIVS_HI_CLOCK_CONTROL_FSCALE_VAL(fscale);
+		u32 clock = gpu_read(gpu, VIVS_HI_CLOCK_CONTROL);
 
+		clock |= VIVS_HI_CLOCK_CONTROL_FSCALE_VAL(fscale);
 		etnaviv_gpu_load_clock(gpu, clock);
 	}
 }

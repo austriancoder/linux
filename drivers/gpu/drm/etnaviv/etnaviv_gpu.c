@@ -321,6 +321,18 @@ static void etnaviv_hw_specs(struct etnaviv_gpu *gpu)
 		gpu->identity.varyings_count -= 1;
 }
 
+static void etnaviv_hw_eco_id(struct etnaviv_gpu *gpu)
+{
+	const u32 chipDate = gpu_read(gpu, VIVS_HI_CHIP_DATE);
+	gpu->identity.eco_id = gpu_read(gpu, VIVS_HI_CHIP_ECO_ID);
+
+	if (etnaviv_is_model_rev(gpu, GC1000, 0x5037) && (chipDate == 0x20120617))
+		gpu->identity.eco_id = 1;
+
+	if (etnaviv_is_model_rev(gpu, GC320, 0x5303) && (chipDate == 0x20140511))
+		gpu->identity.eco_id = 1;
+}
+
 static void etnaviv_hw_identify(struct etnaviv_gpu *gpu)
 {
 	u32 chipIdentity;
@@ -362,6 +374,8 @@ static void etnaviv_hw_identify(struct etnaviv_gpu *gpu)
 			}
 		}
 
+		gpu->identity.product_id = gpu_read(gpu, VIVS_HI_CHIP_PRODUCT_ID);
+
 		/*
 		 * NXP likes to call the GPU on the i.MX6QP GC2000+, but in
 		 * reality it's just a re-branded GC3000. We can identify this
@@ -374,6 +388,9 @@ static void etnaviv_hw_identify(struct etnaviv_gpu *gpu)
 			gpu->identity.revision &= 0xffff;
 		}
 	}
+
+	etnaviv_hw_eco_id(gpu);
+	gpu->identity.customer_id = gpu_read(gpu, VIVS_HI_CHIP_CUSTOMER_ID);
 
 	dev_info(gpu->dev, "model: GC%x, revision: %x\n",
 		 gpu->identity.model, gpu->identity.revision);

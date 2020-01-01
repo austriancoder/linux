@@ -44,9 +44,26 @@ bool etnaviv_fill_identity_from_hwdb(struct etnaviv_gpu *gpu)
 	struct etnaviv_chip_identity *ident = &gpu->identity;
 	int i;
 
+	/* accurate match */
 	for (i = 0; i < ARRAY_SIZE(etnaviv_chip_identities); i++) {
 		if (etnaviv_chip_identities[i].model == ident->model &&
-		    etnaviv_chip_identities[i].revision == ident->revision) {
+		    etnaviv_chip_identities[i].revision == ident->revision &&
+		    etnaviv_chip_identities[i].product_id == ident->product_id &&
+		    etnaviv_chip_identities[i].customer_id == ident->customer_id &&
+		    etnaviv_chip_identities[i].eco_id == ident->eco_id) {
+			memcpy(ident, &etnaviv_chip_identities[i],
+			       sizeof(*ident));
+			return true;
+		}
+	}
+
+	/* match based only on model and revision */
+	for (i = 0; i < ARRAY_SIZE(etnaviv_chip_identities); i++) {
+		if (etnaviv_chip_identities[i].model == ident->model &&
+		    etnaviv_chip_identities[i].revision == ident->revision &&
+		    etnaviv_chip_identities[i].product_id == ~0U &&
+		    etnaviv_chip_identities[i].customer_id == ~0U &&
+		    etnaviv_chip_identities[i].eco_id == ~0U) {
 			memcpy(ident, &etnaviv_chip_identities[i],
 			       sizeof(*ident));
 			return true;

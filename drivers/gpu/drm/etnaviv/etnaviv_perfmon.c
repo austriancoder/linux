@@ -549,3 +549,51 @@ void etnaviv_pm_process(struct etnaviv_gpu *gpu,
 
 	*(bo + pmr->offset) = val;
 }
+
+void etnaviv_pm_enable(struct etnaviv_gpu *gpu)
+{
+	u32 val;
+
+	if (kref_get_unless_zero(&gpu->perfmon_ref))
+		return;
+
+	mutex_lock(&gpu->perfmon_lock);
+
+	/* disable clock gating */
+	val = gpu_read(gpu, VIVS_PM_POWER_CONTROLS);
+	val &= ~VIVS_PM_POWER_CONTROLS_ENABLE_MODULE_CLOCK_GATING;
+	gpu_write(gpu, VIVS_PM_POWER_CONTROLS, val);
+
+	/* enable debug register */
+	val = gpu_read(gpu, VIVS_HI_CLOCK_CONTROL);
+	val &= ~VIVS_HI_CLOCK_CONTROL_DISABLE_DEBUG_REGISTERS;
+	gpu_write(gpu, VIVS_HI_CLOCK_CONTROL, val);
+
+	kref_get(&gpu->perfmon_ref);
+
+	mutex_unlock(&gpu->perfmon_lock);
+}
+
+static void perfmon_release(struct kref *kref)
+{
+	struct etnaviv_gpu *gpu =
+			container_of(kref, struct etnaviv_gpu, perfmon_ref);
+	u32 val;
+
+	/* disable debug register */
+	val = gpu_read(gpu, VIVS_HI_CLOCK_CONTROL);
+	val |= VIVS_HI_CLOCK_CONTROL_DISABLE_DEBUG_REGISTERS;
+	gpu_write(gpu, VIVS_HI_CLOCK_CONTROL, val);
+
+	/* enable clock gating */
+	val = gpu_read(gpu, VIVS_PM_POWER_CONTROLS);
+	val |= VIVS_PM_POWER_CONTROLS_ENABLE_MODULE_CLOCK_GATING;
+	gpu_write(gpu, VIVS_PM_POWER_CONTROLS, val);
+
+	mutex_unlock(&gpu->perfmon_lock);
+}
+
+void etnaviv_pm_disable(struct etnaviv_gpu *gpu)
+{
+	kref_put_mutex(&gpu->perfmon_ref, perfmon_release, &gpu->perfmon_lock);
+}

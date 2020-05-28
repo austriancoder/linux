@@ -35,4 +35,7 @@ int etnaviv_pm_req_validate(const struct drm_etnaviv_gem_submit_pmr *r,
 void etnaviv_pm_process(struct etnaviv_gpu *gpu,
 	const struct etnaviv_perfmon_request *pmr, u32 exec_state);
 
+void etnaviv_pm_enable(struct etnaviv_gpu *gpu);
+void etnaviv_pm_disable(struct etnaviv_gpu *gpu);
+
 #endif /* __ETNAVIV_PERFMON_H__ */

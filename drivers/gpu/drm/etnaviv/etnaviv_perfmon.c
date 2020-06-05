@@ -597,3 +597,36 @@ void etnaviv_pm_disable(struct etnaviv_gpu *gpu)
 {
 	kref_put_mutex(&gpu->perfmon_ref, perfmon_release, &gpu->perfmon_lock);
 }
+
+int etnaviv_pm_dump(struct etnaviv_gpu *gpu, struct drm_gem_object *bo)
+{
+	const unsigned int nr_domains = num_pm_domains(gpu);
+	u32 *bo_vma = etnaviv_gem_vmap(bo);
+	u32 offset = 0;
+	size_t size = 0;
+	unsigned int d, s;
+
+	/* check if bo is big enough */
+	for (d = 0; d < nr_domains; d++) {
+		const struct etnaviv_pm_domain *dom = pm_domain(gpu, d);
+
+		size += dom->nr_signals * 4;
+	}
+
+	if (size > bo->size)
+		return -ENOMEM;
+
+	/* sample all counter */
+	for (d = 0; d < nr_domains; d++) {
+		const struct etnaviv_pm_domain *dom = pm_domain(gpu, d);
+
+		for (s = 0; s < dom->nr_signals; s++) {
+			const struct etnaviv_pm_signal *sig = &dom->signal[s];
+
+			*(bo_vma + offset) = sig->sample(gpu, dom, sig);
+			offset++;
+		}
+	}
+
+	return 0;
+}

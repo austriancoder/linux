@@ -263,6 +263,11 @@ struct drm_etnaviv_pm_signal {
 	char  name[64];   /* out, name of domain */
 };
 
+struct drm_etnaviv_pm_dump {
+	__u32 pipe;       /* in */
+	__u32 bo;         /* out */
+};
+
 #define DRM_ETNAVIV_GET_PARAM          0x00
 #define DRM_ETNAVIV_SET_PARAM          0x01
 #define DRM_ETNAVIV_GEM_NEW            0x02
@@ -275,7 +280,8 @@ struct drm_etnaviv_pm_signal {
 #define DRM_ETNAVIV_GEM_WAIT           0x09
 #define DRM_ETNAVIV_PM_QUERY_DOM       0x0a
 #define DRM_ETNAVIV_PM_QUERY_SIG       0x0b
-#define DRM_ETNAVIV_NUM_IOCTLS         0x0c
+#define DRM_ETNAVIV_PM_DUMP            0x0c
+#define DRM_ETNAVIV_NUM_IOCTLS         0x0d
 
 #define DRM_IOCTL_ETNAVIV_GET_PARAM    DRM_IOWR(DRM_COMMAND_BASE + DRM_ETNAVIV_GET_PARAM, struct drm_etnaviv_param)
 #define DRM_IOCTL_ETNAVIV_SET_PARAM    DRM_IOWR(DRM_COMMAND_BASE + DRM_ETNAVIV_SET_PARAM, struct drm_etnaviv_param)
@@ -289,6 +295,7 @@ struct drm_etnaviv_pm_signal {
 #define DRM_IOCTL_ETNAVIV_GEM_WAIT     DRM_IOW(DRM_COMMAND_BASE + DRM_ETNAVIV_GEM_WAIT, struct drm_etnaviv_gem_wait)
 #define DRM_IOCTL_ETNAVIV_PM_QUERY_DOM DRM_IOWR(DRM_COMMAND_BASE + DRM_ETNAVIV_PM_QUERY_DOM, struct drm_etnaviv_pm_domain)
 #define DRM_IOCTL_ETNAVIV_PM_QUERY_SIG DRM_IOWR(DRM_COMMAND_BASE + DRM_ETNAVIV_PM_QUERY_SIG, struct drm_etnaviv_pm_signal)
+#define DRM_IOCTL_ETNAVIV_PM_DUMP      DRM_IOWR(DRM_COMMAND_BASE + DRM_ETNAVIV_PM_DUMP, struct drm_etnaviv_pm_dump)
 
 #if defined(__cplusplus)
 }

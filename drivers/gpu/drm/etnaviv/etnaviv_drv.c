@@ -483,6 +483,35 @@ static int etnaviv_ioctl_pm_query_sig(struct drm_device *dev, void *data,
 	return etnaviv_pm_query_sig(gpu, args);
 }
 
+static int etnaviv_ioctl_pm_dump(struct drm_device *dev, void *data, struct drm_file *file)
+{
+	struct etnaviv_drm_private *priv = dev->dev_private;
+	struct drm_etnaviv_pm_dump *args = data;
+	struct drm_gem_object *obj;
+	struct etnaviv_gpu *gpu;
+	int ret;
+
+	if (args->pipe >= ETNA_MAX_PIPES)
+		return -EINVAL;
+
+	gpu = priv->gpu[args->pipe];
+	if (!gpu)
+		return -ENXIO;
+
+	if (!kref_read(&gpu->perfmon_ref))
+		return -EINVAL;
+
+	obj = drm_gem_object_lookup(file, args->bo);
+	if (!obj)
+		return -ENOENT;
+
+	ret = etnaviv_pm_dump(gpu, obj);
+
+	drm_gem_object_put_unlocked(obj);
+
+	return ret;
+}
+
 static const struct drm_ioctl_desc etnaviv_ioctls[] = {
 #define ETNA_IOCTL(n, func, flags) \
 	DRM_IOCTL_DEF_DRV(ETNAVIV_##n, etnaviv_ioctl_##func, flags)
@@ -498,6 +527,7 @@ static const struct drm_ioctl_desc etnaviv_ioctls[] = {
 	ETNA_IOCTL(GEM_WAIT,     gem_wait,     DRM_RENDER_ALLOW),
 	ETNA_IOCTL(PM_QUERY_DOM, pm_query_dom, DRM_RENDER_ALLOW),
 	ETNA_IOCTL(PM_QUERY_SIG, pm_query_sig, DRM_RENDER_ALLOW),
+	ETNA_IOCTL(PM_DUMP,      pm_dump,      DRM_RENDER_ALLOW),
 };
 
 static const struct vm_operations_struct vm_ops = {

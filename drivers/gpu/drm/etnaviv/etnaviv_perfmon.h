@@ -38,4 +38,6 @@ void etnaviv_pm_process(struct etnaviv_gpu *gpu,
 void etnaviv_pm_enable(struct etnaviv_gpu *gpu);
 void etnaviv_pm_disable(struct etnaviv_gpu *gpu);
 
+int etnaviv_pm_dump(struct etnaviv_gpu *gpu, struct drm_gem_object *bo);
+
 #endif /* __ETNAVIV_PERFMON_H__ */

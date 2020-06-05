@@ -1249,7 +1249,7 @@ static void sync_point_perfmon_sample(struct etnaviv_gpu *gpu,
 		const struct etnaviv_perfmon_request *pmr = submit->pmrs + i;
 
 		if (pmr->flags == flags)
-			etnaviv_perfmon_process(gpu, pmr, submit->exec_state);
+			etnaviv_pm_process(gpu, pmr, submit->exec_state);
 	}
 }
 

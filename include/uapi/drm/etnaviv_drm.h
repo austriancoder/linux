@@ -74,6 +74,7 @@ struct drm_etnaviv_timespec {
 #define ETNAVIV_PARAM_GPU_NUM_CONSTANTS             0x19
 #define ETNAVIV_PARAM_GPU_NUM_VARYINGS              0x1a
 #define ETNAVIV_PARAM_SOFTPIN_START_ADDR            0x1b
+#define ETNAVIV_PARAM_GLOBAL_PERFMON_MODE           0x1c
 
 #define ETNA_MAX_PIPES 4
 
@@ -263,9 +264,7 @@ struct drm_etnaviv_pm_signal {
 };
 
 #define DRM_ETNAVIV_GET_PARAM          0x00
-/* placeholder:
 #define DRM_ETNAVIV_SET_PARAM          0x01
- */
 #define DRM_ETNAVIV_GEM_NEW            0x02
 #define DRM_ETNAVIV_GEM_INFO           0x03
 #define DRM_ETNAVIV_GEM_CPU_PREP       0x04
@@ -279,6 +278,7 @@ struct drm_etnaviv_pm_signal {
 #define DRM_ETNAVIV_NUM_IOCTLS         0x0c
 
 #define DRM_IOCTL_ETNAVIV_GET_PARAM    DRM_IOWR(DRM_COMMAND_BASE + DRM_ETNAVIV_GET_PARAM, struct drm_etnaviv_param)
+#define DRM_IOCTL_ETNAVIV_SET_PARAM    DRM_IOWR(DRM_COMMAND_BASE + DRM_ETNAVIV_SET_PARAM, struct drm_etnaviv_param)
 #define DRM_IOCTL_ETNAVIV_GEM_NEW      DRM_IOWR(DRM_COMMAND_BASE + DRM_ETNAVIV_GEM_NEW, struct drm_etnaviv_gem_new)
 #define DRM_IOCTL_ETNAVIV_GEM_INFO     DRM_IOWR(DRM_COMMAND_BASE + DRM_ETNAVIV_GEM_INFO, struct drm_etnaviv_gem_info)
 #define DRM_IOCTL_ETNAVIV_GEM_CPU_PREP DRM_IOW(DRM_COMMAND_BASE + DRM_ETNAVIV_GEM_CPU_PREP, struct drm_etnaviv_gem_cpu_prep)

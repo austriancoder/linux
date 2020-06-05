@@ -29,6 +29,7 @@ struct etnaviv_iommu_global;
 struct etnaviv_file_private {
 	struct etnaviv_iommu_context	*mmu;
 	struct drm_sched_entity		sched_entity[ETNA_MAX_PIPES];
+	bool global_perfmon_mode[ETNA_MAX_PIPES];
 };
 
 struct etnaviv_drm_private {

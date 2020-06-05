@@ -162,6 +162,8 @@ static inline u32 gpu_read(struct etnaviv_gpu *gpu, u32 reg)
 }
 
 int etnaviv_gpu_get_param(struct etnaviv_gpu *gpu, u32 param, u64 *value);
+int etnaviv_gpu_set_param(struct drm_file *file, struct drm_etnaviv_param *args,
+	struct etnaviv_gpu *gpu);
 
 int etnaviv_gpu_init(struct etnaviv_gpu *gpu);
 bool etnaviv_fill_identity_from_hwdb(struct etnaviv_gpu *gpu);

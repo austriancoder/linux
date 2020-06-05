@@ -3,6 +3,8 @@
  * Copyright (C) 2015-2018 Etnaviv Project
  */
 
+#include <drm/drm_file.h>
+
 #include <linux/clk.h>
 #include <linux/component.h>
 #include <linux/delay.h>
@@ -156,6 +158,41 @@ int etnaviv_gpu_get_param(struct etnaviv_gpu *gpu, u32 param, u64 *value)
 			*value = ~0ULL;
 		break;
 
+	case ETNAVIV_PARAM_GLOBAL_PERFMON_MODE:
+		*value = !!kref_read(&gpu->perfmon_ref);
+		break;
+
+	default:
+		DBG("%s: invalid param: %u", dev_name(gpu->dev), param);
+		return -EINVAL;
+	}
+
+	return 0;
+}
+
+int etnaviv_gpu_set_param(struct drm_file *file, struct drm_etnaviv_param *args,
+	struct etnaviv_gpu *gpu)
+{
+	struct etnaviv_file_private *ctx = file->driver_priv;
+	const u32 pipe = args->pipe;
+	const u32 param = args->param;
+
+	switch (param) {
+	case ETNAVIV_PARAM_GLOBAL_PERFMON_MODE: {
+		const bool enable = !!args->value;
+
+		if (ctx->global_perfmon_mode[pipe] == enable)
+			return 0;
+
+		ctx->global_perfmon_mode[pipe] = enable;
+
+		if (enable)
+			etnaviv_pm_enable(gpu);
+		else
+			etnaviv_pm_disable(gpu);
+
+		break;
+	}
 	default:
 		DBG("%s: invalid param: %u", dev_name(gpu->dev), param);
 		return -EINVAL;

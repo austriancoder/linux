@@ -93,8 +93,12 @@ static void etnaviv_postclose(struct drm_device *dev, struct drm_file *file)
 	for (i = 0; i < ETNA_MAX_PIPES; i++) {
 		struct etnaviv_gpu *gpu = priv->gpu[i];
 
-		if (gpu)
+		if (gpu) {
 			drm_sched_entity_destroy(&ctx->sched_entity[i]);
+
+			if (ctx->global_perfmon_mode[i])
+				etnaviv_pm_disable(gpu);
+		}
 	}
 
 	etnaviv_iommu_context_put(ctx->mmu);
@@ -268,6 +272,23 @@ static int etnaviv_ioctl_get_param(struct drm_device *dev, void *data,
 		return -ENXIO;
 
 	return etnaviv_gpu_get_param(gpu, args->param, &args->value);
+}
+
+static int etnaviv_ioctl_set_param(struct drm_device *dev, void *data,
+		struct drm_file *file)
+{
+	struct etnaviv_drm_private *priv = dev->dev_private;
+	struct drm_etnaviv_param *args = data;
+	struct etnaviv_gpu *gpu;
+
+	if (args->pipe >= ETNA_MAX_PIPES)
+		return -EINVAL;
+
+	gpu = priv->gpu[args->pipe];
+	if (!gpu)
+		return -ENXIO;
+
+	return etnaviv_gpu_set_param(file, args, gpu);
 }
 
 static int etnaviv_ioctl_gem_new(struct drm_device *dev, void *data,
@@ -466,6 +487,7 @@ static const struct drm_ioctl_desc etnaviv_ioctls[] = {
 #define ETNA_IOCTL(n, func, flags) \
 	DRM_IOCTL_DEF_DRV(ETNAVIV_##n, etnaviv_ioctl_##func, flags)
 	ETNA_IOCTL(GET_PARAM,    get_param,    DRM_RENDER_ALLOW),
+	ETNA_IOCTL(SET_PARAM,    set_param,    DRM_RENDER_ALLOW),
 	ETNA_IOCTL(GEM_NEW,      gem_new,      DRM_RENDER_ALLOW),
 	ETNA_IOCTL(GEM_INFO,     gem_info,     DRM_RENDER_ALLOW),
 	ETNA_IOCTL(GEM_CPU_PREP, gem_cpu_prep, DRM_RENDER_ALLOW),

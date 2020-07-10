@@ -899,7 +899,7 @@ int etnaviv_gpu_debugfs(struct etnaviv_gpu *gpu, struct seq_file *m)
 {
 	struct dma_debug debug;
 	u32 dma_lo, dma_hi, axi, idle;
-	int ret;
+	int ret, i;
 
 	seq_printf(m, "%s Status:\n", dev_name(gpu->dev));
 
@@ -1016,6 +1016,16 @@ int etnaviv_gpu_debugfs(struct etnaviv_gpu *gpu, struct seq_file *m)
 		seq_puts(m, "\t TP is not idle\n");
 	if (idle & VIVS_HI_IDLE_STATE_AXI_LP)
 		seq_puts(m, "\t AXI low power mode\n");
+
+	seq_printf(m, "\tload:\n");
+	spin_lock_bh(&gpu->loadavg_spinlock);
+
+	for (i = 0; i < ARRAY_SIZE(etna_idle_module_names); i++)
+		seq_printf(m, "\t %s: %u%%\n",
+				  etna_idle_module_names[i].name,
+				  gpu->loadavg_percentage[i]);
+
+	spin_unlock_bh(&gpu->loadavg_spinlock);
 
 	if (gpu->identity.features & chipFeatures_DEBUG_MODE) {
 		u32 read0 = gpu_read(gpu, VIVS_MC_DEBUG_READ0);

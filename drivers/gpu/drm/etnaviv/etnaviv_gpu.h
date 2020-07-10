@@ -10,6 +10,8 @@
 #include "etnaviv_gem.h"
 #include "etnaviv_mmu.h"
 #include "etnaviv_drv.h"
+#include "etnaviv_sma.h"
+#include "state_hi.xml.h"
 
 struct etnaviv_gem_submit;
 struct etnaviv_vram_mapping;
@@ -91,6 +93,26 @@ struct clk;
 
 #define ETNA_NR_EVENTS 30
 
+DECLARE_SMA(loadavg, 100)
+
+static const struct {
+    const char *name;
+    u32 bit;
+} etna_idle_module_names[] = {
+    { "FE", VIVS_HI_IDLE_STATE_FE },
+    { "DE", VIVS_HI_IDLE_STATE_DE },
+    { "PE", VIVS_HI_IDLE_STATE_PE },
+    { "SH", VIVS_HI_IDLE_STATE_SH },
+    { "PA", VIVS_HI_IDLE_STATE_PA },
+    { "SE", VIVS_HI_IDLE_STATE_SE },
+    { "RA", VIVS_HI_IDLE_STATE_RA },
+    { "TX", VIVS_HI_IDLE_STATE_TX },
+    { "VG", VIVS_HI_IDLE_STATE_VG },
+    { "IM", VIVS_HI_IDLE_STATE_IM },
+    { "FP", VIVS_HI_IDLE_STATE_FP },
+    { "TS", VIVS_HI_IDLE_STATE_TS },
+};
+
 struct etnaviv_gpu {
 	struct drm_device *drm;
 	struct thermal_cooling_device *cooling;
@@ -145,6 +167,13 @@ struct etnaviv_gpu {
 	unsigned int freq_scale;
 	unsigned long base_rate_core;
 	unsigned long base_rate_shader;
+
+	/* Loadavg: */
+	struct hrtimer loadavg_timer;
+	spinlock_t loadavg_spinlock;
+	ktime_t loadavg_last_sample_time;
+	struct sma_loadavg loadavg_value[ARRAY_SIZE(etna_idle_module_names)];
+	unsigned int loadavg_percentage[ARRAY_SIZE(etna_idle_module_names)];
 };
 
 static inline void gpu_write(struct etnaviv_gpu *gpu, u32 reg, u32 data)
@@ -160,6 +189,7 @@ static inline u32 gpu_read(struct etnaviv_gpu *gpu, u32 reg)
 int etnaviv_gpu_get_param(struct etnaviv_gpu *gpu, u32 param, u64 *value);
 
 int etnaviv_gpu_init(struct etnaviv_gpu *gpu);
+void etnaviv_gpu_shutdown(struct etnaviv_gpu *gpu);
 bool etnaviv_fill_identity_from_hwdb(struct etnaviv_gpu *gpu);
 
 #ifdef CONFIG_DEBUG_FS

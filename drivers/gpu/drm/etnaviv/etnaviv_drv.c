@@ -46,6 +46,19 @@ static void load_gpu(struct drm_device *dev)
 	}
 }
 
+static void unload_gpu(struct drm_device *dev)
+{
+	struct etnaviv_drm_private *priv = dev->dev_private;
+	unsigned int i;
+
+	for (i = 0; i < ETNA_MAX_PIPES; i++) {
+		struct etnaviv_gpu *g = priv->gpu[i];
+
+		if (g)
+			etnaviv_gpu_shutdown(g);
+	}
+}
+
 static int etnaviv_open(struct drm_device *dev, struct drm_file *file)
 {
 	struct etnaviv_drm_private *priv = dev->dev_private;
@@ -581,6 +594,7 @@ static void etnaviv_unbind(struct device *dev)
 	struct drm_device *drm = dev_get_drvdata(dev);
 	struct etnaviv_drm_private *priv = drm->dev_private;
 
+	unload_gpu(drm);
 	drm_dev_unregister(drm);
 
 	component_unbind_all(dev, drm);

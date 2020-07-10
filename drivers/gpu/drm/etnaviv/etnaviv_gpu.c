@@ -31,6 +31,8 @@
 #define PHYS_OFFSET 0
 #endif
 
+static const ktime_t loadavg_polling_frequency = 10 * NSEC_PER_MSEC;
+
 static const struct platform_device_id gpu_ids[] = {
 	{ .name = "etnaviv-gpu,2d" },
 	{ },
@@ -721,6 +723,32 @@ static void etnaviv_gpu_hw_init(struct etnaviv_gpu *gpu)
 	gpu_write(gpu, VIVS_HI_INTR_ENBL, ~0U);
 }
 
+static enum hrtimer_restart etnaviv_loadavg_function(struct hrtimer *t)
+{
+	struct etnaviv_gpu *gpu = container_of(t, struct etnaviv_gpu, loadavg_timer);
+	const u32 idle = gpu_read(gpu, VIVS_HI_IDLE_STATE);
+	int i;
+
+	gpu->loadavg_last_sample_time = ktime_get();
+
+	for (i = 0; i < ARRAY_SIZE(etna_idle_module_names); i++)
+		if ((idle & etna_idle_module_names[i].bit))
+			sma_loadavg_add(&gpu->loadavg_value[i], 0);
+		else
+			sma_loadavg_add(&gpu->loadavg_value[i], 100);
+
+	spin_lock(&gpu->loadavg_spinlock);
+
+	for (i = 0; i < ARRAY_SIZE(etna_idle_module_names); i++)
+		gpu->loadavg_percentage[i] = sma_loadavg_read(&gpu->loadavg_value[i]);
+
+	spin_unlock(&gpu->loadavg_spinlock);
+
+	hrtimer_forward_now(t, loadavg_polling_frequency);
+
+	return HRTIMER_RESTART;
+}
+
 int etnaviv_gpu_init(struct etnaviv_gpu *gpu)
 {
 	struct etnaviv_drm_private *priv = gpu->drm->dev_private;
@@ -811,6 +839,11 @@ int etnaviv_gpu_init(struct etnaviv_gpu *gpu)
 	for (i = 0; i < ARRAY_SIZE(gpu->event); i++)
 		complete(&gpu->event_free);
 
+	/* Setup loadavg timer */
+	hrtimer_init(&gpu->loadavg_timer, CLOCK_MONOTONIC, HRTIMER_MODE_ABS_SOFT);
+	gpu->loadavg_timer.function = etnaviv_loadavg_function;
+	hrtimer_start(&gpu->loadavg_timer, loadavg_polling_frequency, HRTIMER_MODE_ABS_SOFT);
+
 	/* Now program the hardware */
 	mutex_lock(&gpu->lock);
 	etnaviv_gpu_hw_init(gpu);
@@ -830,6 +863,11 @@ pm_put:
 	pm_runtime_put_autosuspend(gpu->dev);
 
 	return ret;
+}
+
+void etnaviv_gpu_shutdown(struct etnaviv_gpu *gpu)
+{
+	hrtimer_cancel(&gpu->loadavg_timer);
 }
 
 #ifdef CONFIG_DEBUG_FS
@@ -1562,6 +1600,8 @@ int etnaviv_gpu_wait_idle(struct etnaviv_gpu *gpu, unsigned int timeout_ms)
 static int etnaviv_gpu_hw_suspend(struct etnaviv_gpu *gpu)
 {
 	if (gpu->initialized && gpu->mmu_context) {
+		hrtimer_cancel(&gpu->loadavg_timer);
+
 		/* Replace the last WAIT with END */
 		mutex_lock(&gpu->lock);
 		etnaviv_buffer_end(gpu);
@@ -1586,7 +1626,8 @@ static int etnaviv_gpu_hw_suspend(struct etnaviv_gpu *gpu)
 #ifdef CONFIG_PM
 static int etnaviv_gpu_hw_resume(struct etnaviv_gpu *gpu)
 {
-	int ret;
+	s64 missing_samples;
+	int ret, i, j;
 
 	ret = mutex_lock_killable(&gpu->lock);
 	if (ret)
@@ -1595,7 +1636,27 @@ static int etnaviv_gpu_hw_resume(struct etnaviv_gpu *gpu)
 	etnaviv_gpu_update_clock(gpu);
 	etnaviv_gpu_hw_init(gpu);
 
+	/* Update loadavg based on delta of suspend and resume ktime.
+	 *
+	 * Our SMA algorithm uses a fixed size of 100 items to be able
+	 * to calculate the mean over one second as we sample every 10ms.
+	 */
+	missing_samples = div_s64(ktime_ms_delta(ktime_get(), gpu->loadavg_last_sample_time), 10);
+	missing_samples = min(missing_samples, (s64)100);
+
+	spin_lock_bh(&gpu->loadavg_spinlock);
+
+	for (i = 0; i < ARRAY_SIZE(etna_idle_module_names); i++) {
+		struct sma_loadavg *loadavg = &gpu->loadavg_value[i];
+
+		for (j = 0; j < missing_samples; j++)
+			sma_loadavg_add(loadavg, 0);
+	}
+
+	spin_unlock_bh(&gpu->loadavg_spinlock);
+
 	mutex_unlock(&gpu->lock);
+	hrtimer_start(&gpu->loadavg_timer, loadavg_polling_frequency, HRTIMER_MODE_ABS_SOFT);
 
 	return 0;
 }
@@ -1763,6 +1824,7 @@ static int etnaviv_gpu_platform_probe(struct platform_device *pdev)
 	gpu->dev = &pdev->dev;
 	mutex_init(&gpu->lock);
 	mutex_init(&gpu->fence_lock);
+	spin_lock_init(&gpu->loadavg_spinlock);
 
 	/* Map registers: */
 	gpu->mmio = devm_platform_ioremap_resource(pdev, 0);

@@ -265,6 +265,9 @@ static const struct etnaviv_chip_identity etnaviv_chip_identities[] = {
 bool etnaviv_fill_identity_from_hwdb(struct etnaviv_gpu *gpu)
 {
 	struct etnaviv_chip_identity *ident = &gpu->identity;
+	const u32 product_id = ident->product_id;
+	const u32 customer_id = ident->customer_id;
+	const u32 eco_id = ident->eco_id;
 	int i;
 
 	for (i = 0; i < ARRAY_SIZE(etnaviv_chip_identities); i++) {
@@ -278,6 +281,17 @@ bool etnaviv_fill_identity_from_hwdb(struct etnaviv_gpu *gpu)
 			 etnaviv_chip_identities[i].eco_id == ~0U)) {
 			memcpy(ident, &etnaviv_chip_identities[i],
 			       sizeof(*ident));
+
+			/* Restore some id values if ~0U aka 'don't care' is used. */
+			if (etnaviv_chip_identities[i].product_id == ~0U)
+				ident->product_id = product_id;
+
+			if (etnaviv_chip_identities[i].customer_id == ~0U)
+				ident->customer_id = customer_id;
+
+			if (etnaviv_chip_identities[i].eco_id == ~0U)
+				ident->eco_id = eco_id;
+
 			return true;
 		}
 	}

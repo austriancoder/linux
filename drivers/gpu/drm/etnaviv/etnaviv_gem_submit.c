@@ -4,6 +4,7 @@
  */
 
 #include <drm/drm_file.h>
+#include <drm/drm_syncobj.h>
 #include <linux/dma-fence-array.h>
 #include <linux/file.h>
 #include <linux/pm_runtime.h>
@@ -409,6 +410,161 @@ void etnaviv_submit_put(struct etnaviv_gem_submit *submit)
 	kref_put(&submit->refcount, submit_cleanup);
 }
 
+struct etna_submit_post_dep {
+	struct drm_syncobj *syncobj;
+	uint64_t point;
+	struct dma_fence_chain *chain;
+};
+
+static struct drm_syncobj **etna_parse_deps(struct etnaviv_gem_submit *submit,
+					    struct drm_file *file,
+					    uint64_t in_syncobjs_addr,
+					    uint32_t nr_in_syncobjs,
+					    size_t syncobj_stride)
+{
+	struct drm_syncobj **syncobjs = NULL;
+	struct drm_etnaviv_gem_submit_syncobj syncobj_desc = {0};
+	int ret = 0;
+	uint32_t i, j;
+
+	syncobjs = kcalloc(nr_in_syncobjs, sizeof(*syncobjs),
+			   GFP_KERNEL | __GFP_NOWARN | __GFP_NORETRY);
+	if (!syncobjs)
+		return ERR_PTR(-ENOMEM);
+
+	for (i = 0; i < nr_in_syncobjs; ++i) {
+		uint64_t address = in_syncobjs_addr + i * syncobj_stride;
+
+		if (copy_from_user(&syncobj_desc,
+				   u64_to_user_ptr(address),
+				   min(syncobj_stride, sizeof(syncobj_desc)))) {
+			ret = -EFAULT;
+			break;
+		}
+
+		if (syncobj_desc.flags & ~ETNA_SUBMIT_SYNCOBJ_FLAGS) {
+			ret = -EINVAL;
+			break;
+		}
+
+		ret = drm_sched_job_add_syncobj_dependency(&submit->sched_job, file,
+							   syncobj_desc.handle, syncobj_desc.point);
+		if (ret)
+			break;
+
+		if (syncobj_desc.flags & ETNA_SUBMIT_SYNCOBJ_RESET) {
+			syncobjs[i] =
+				drm_syncobj_find(file, syncobj_desc.handle);
+			if (!syncobjs[i]) {
+				ret = -EINVAL;
+				break;
+			}
+		}
+	}
+
+	if (ret) {
+		for (j = 0; j <= i; ++j) {
+			if (syncobjs[j])
+				drm_syncobj_put(syncobjs[j]);
+		}
+		kfree(syncobjs);
+		return ERR_PTR(ret);
+	}
+	return syncobjs;
+}
+
+static void etna_reset_syncobjs(struct drm_syncobj **syncobjs,
+				uint32_t nr_syncobjs)
+{
+	uint32_t i;
+
+	for (i = 0; syncobjs && i < nr_syncobjs; ++i) {
+		if (syncobjs[i])
+			drm_syncobj_replace_fence(syncobjs[i], NULL);
+	}
+}
+
+static struct etna_submit_post_dep *etna_parse_post_deps(struct drm_device *dev,
+							 struct drm_file *file,
+							 uint64_t syncobjs_addr,
+							 uint32_t nr_syncobjs,
+							 size_t syncobj_stride)
+{
+	struct etna_submit_post_dep *post_deps;
+	struct drm_etnaviv_gem_submit_syncobj syncobj_desc = {0};
+	int ret = 0;
+	uint32_t i, j;
+
+	post_deps = kcalloc(nr_syncobjs, sizeof(*post_deps),
+			    GFP_KERNEL | __GFP_NOWARN | __GFP_NORETRY);
+	if (!post_deps)
+		return ERR_PTR(-ENOMEM);
+
+	for (i = 0; i < nr_syncobjs; ++i) {
+		uint64_t address = syncobjs_addr + i * syncobj_stride;
+
+		if (copy_from_user(&syncobj_desc,
+				   u64_to_user_ptr(address),
+				   min(syncobj_stride, sizeof(syncobj_desc)))) {
+			ret = -EFAULT;
+			break;
+		}
+
+		post_deps[i].point = syncobj_desc.point;
+
+		if (syncobj_desc.flags) {
+			ret = -EINVAL;
+			break;
+		}
+
+		if (syncobj_desc.point) {
+			post_deps[i].chain = dma_fence_chain_alloc();
+			if (!post_deps[i].chain) {
+				ret = -ENOMEM;
+				break;
+			}
+		}
+
+		post_deps[i].syncobj =
+			drm_syncobj_find(file, syncobj_desc.handle);
+		if (!post_deps[i].syncobj) {
+			ret = -EINVAL;
+			break;
+		}
+	}
+
+	if (ret) {
+		for (j = 0; j <= i; ++j) {
+			dma_fence_chain_free(post_deps[j].chain);
+			if (post_deps[j].syncobj)
+				drm_syncobj_put(post_deps[j].syncobj);
+		}
+
+		kfree(post_deps);
+		return ERR_PTR(ret);
+	}
+
+	return post_deps;
+}
+
+static void etna_process_post_deps(struct etna_submit_post_dep *post_deps,
+				   uint32_t count, struct dma_fence *fence)
+{
+	uint32_t i;
+
+	for (i = 0; post_deps && i < count; ++i) {
+		if (post_deps[i].chain) {
+			drm_syncobj_add_point(post_deps[i].syncobj,
+					      post_deps[i].chain,
+					      fence, post_deps[i].point);
+			post_deps[i].chain = NULL;
+		} else {
+			drm_syncobj_replace_fence(post_deps[i].syncobj,
+						  fence);
+		}
+	}
+}
+
 int etnaviv_ioctl_gem_submit(struct drm_device *dev, void *data,
 		struct drm_file *file)
 {
@@ -422,9 +578,12 @@ int etnaviv_ioctl_gem_submit(struct drm_device *dev, void *data,
 	struct etnaviv_gpu *gpu;
 	struct sync_file *sync_file = NULL;
 	struct ww_acquire_ctx ticket;
+	struct etna_submit_post_dep *post_deps = NULL;
+	struct drm_syncobj **syncobjs_to_reset = NULL;
 	int out_fence_fd = -1;
 	struct pid *pid = get_pid(task_pid(current));
 	void *stream;
+	unsigned i;
 	int ret;
 
 	if (args->pipe >= ETNA_MAX_PIPES)
@@ -563,6 +722,28 @@ int etnaviv_ioctl_gem_submit(struct drm_device *dev, void *data,
 			goto err_submit_job;
 	}
 
+	if (args->flags & ETNA_SUBMIT_SYNCOBJ_IN) {
+		syncobjs_to_reset = etna_parse_deps(submit, file,
+						    args->in_syncobjs,
+						    args->nr_in_syncobjs,
+						    args->syncobj_stride);
+		if (IS_ERR(syncobjs_to_reset)) {
+			ret = PTR_ERR(syncobjs_to_reset);
+			goto err_submit_job;
+		}
+	}
+
+	if (args->flags & ETNA_SUBMIT_SYNCOBJ_OUT) {
+		post_deps = etna_parse_post_deps(dev, file,
+						 args->out_syncobjs,
+						 args->nr_out_syncobjs,
+						 args->syncobj_stride);
+		if (IS_ERR(post_deps)) {
+			ret = PTR_ERR(post_deps);
+			goto err_submit_job;
+		}
+	}
+
 	ret = submit_pin_objects(submit);
 	if (ret)
 		goto err_submit_job;
@@ -615,7 +796,27 @@ int etnaviv_ioctl_gem_submit(struct drm_device *dev, void *data,
 	args->fence_fd = out_fence_fd;
 	args->fence = submit->out_fence_id;
 
+	etna_reset_syncobjs(syncobjs_to_reset, args->nr_in_syncobjs);
+	etna_process_post_deps(post_deps, args->nr_out_syncobjs,
+			       submit->out_fence);
+
 err_submit_job:
+	if (!IS_ERR_OR_NULL(post_deps)) {
+		for (i = 0; i < args->nr_out_syncobjs; ++i) {
+			kfree(post_deps[i].chain);
+			drm_syncobj_put(post_deps[i].syncobj);
+		}
+		kfree(post_deps);
+	}
+
+	if (!IS_ERR_OR_NULL(syncobjs_to_reset)) {
+		for (i = 0; i < args->nr_in_syncobjs; ++i) {
+			if (syncobjs_to_reset[i])
+				drm_syncobj_put(syncobjs_to_reset[i]);
+		}
+		kfree(syncobjs_to_reset);
+	}
+
 	if (ret)
 		drm_sched_job_cleanup(&submit->sched_job);
 err_submit_put:

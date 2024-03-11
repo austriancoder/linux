@@ -192,13 +192,30 @@ struct drm_etnaviv_gem_submit_pmr {
 #define ETNA_SUBMIT_FENCE_FD_IN         0x0002
 #define ETNA_SUBMIT_FENCE_FD_OUT        0x0004
 #define ETNA_SUBMIT_SOFTPIN             0x0008
+#define ETNA_SUBMIT_SYNCOBJ_IN          0x0010 /* enable input syncobj */
+#define ETNA_SUBMIT_SYNCOBJ_OUT         0x0020 /* enable output syncobj */
 #define ETNA_SUBMIT_FLAGS		(ETNA_SUBMIT_NO_IMPLICIT | \
 					 ETNA_SUBMIT_FENCE_FD_IN | \
 					 ETNA_SUBMIT_FENCE_FD_OUT| \
-					 ETNA_SUBMIT_SOFTPIN)
+					 ETNA_SUBMIT_SOFTPIN | \
+					 ETNA_SUBMIT_SYNCOBJ_IN | \
+					 ETNA_SUBMIT_SYNCOBJ_OUT)
 #define ETNA_PIPE_3D      0x00
 #define ETNA_PIPE_2D      0x01
 #define ETNA_PIPE_VG      0x02
+
+
+#define ETNA_SUBMIT_SYNCOBJ_RESET 0x00000001 /* Reset syncobj after wait. */
+#define ETNA_SUBMIT_SYNCOBJ_FLAGS        ( \
+               ETNA_SUBMIT_SYNCOBJ_RESET | \
+               0)
+
+struct drm_etnaviv_gem_submit_syncobj {
+       __u32 handle;     /* in, syncobj handle. */
+       __u32 flags;      /* in, from ETMA_SUBMIT_SYNCOBJ_FLAGS */
+       __u64 point;      /* in, timepoint for timeline syncobjs. */
+};
+
 struct drm_etnaviv_gem_submit {
 	__u32 fence;          /* out */
 	__u32 pipe;           /* in */
@@ -213,7 +230,11 @@ struct drm_etnaviv_gem_submit {
 	__s32 fence_fd;       /* in/out, fence fd (see ETNA_SUBMIT_FENCE_FD_x) */
 	__u64 pmrs;           /* in, ptr to array of submit_pmr's */
 	__u32 nr_pmrs;        /* in, number of submit_pmr's */
-	__u32 pad;
+	__u32 syncobj_stride; /* in, stride of syncobj arrays. */
+	__u64 in_syncobjs;    /* in, ptr to array of drm_etnaviv_gem_submit_syncobj */
+	__u64 out_syncobjs;   /* in, ptr to array of drm_etnaviv_gem_submit_syncobj */
+	__u32 nr_in_syncobjs; /* in, number of entries in in_syncobj */
+	__u32 nr_out_syncobjs; /* in, number of entries in out_syncobj. */
 };
 
 /* The normal way to synchronize with the GPU is just to CPU_PREP on

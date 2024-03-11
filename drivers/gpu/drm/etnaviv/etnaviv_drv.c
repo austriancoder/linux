@@ -491,7 +491,10 @@ static const struct drm_ioctl_desc etnaviv_ioctls[] = {
 DEFINE_DRM_GEM_FOPS(fops);
 
 static const struct drm_driver etnaviv_drm_driver = {
-	.driver_features    = DRIVER_GEM | DRIVER_RENDER,
+	.driver_features    = DRIVER_GEM |
+				DRIVER_RENDER |
+				DRIVER_SYNCOBJ |
+				DRIVER_SYNCOBJ_TIMELINE,
 	.open               = etnaviv_open,
 	.postclose           = etnaviv_postclose,
 	.gem_prime_import_sg_table = etnaviv_gem_prime_import_sg_table,
@@ -505,7 +508,7 @@ static const struct drm_driver etnaviv_drm_driver = {
 	.desc               = "etnaviv DRM",
 	.date               = "20151214",
 	.major              = 1,
-	.minor              = 4,
+	.minor              = 5,
 };
 
 /*

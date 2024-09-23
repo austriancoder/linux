@@ -312,6 +312,9 @@ static int v3d_perfmon_idr_del(int id, void *elem, void *data)
 	if (perfmon == v3d->active_perfmon)
 		v3d_perfmon_stop(v3d, perfmon, false);
 
+	/* If this perfmon is global one, set global_perfmon to NULL */
+	cmpxchg(&v3d->perfmon_info.global_perfmon, perfmon, NULL);
+
 	v3d_perfmon_put(perfmon);
 
 	return 0;
@@ -448,6 +451,35 @@ int v3d_perfmon_get_counter_ioctl(struct drm_device *dev, void *data,
 	strscpy(req->name, counter->name, sizeof(req->name));
 	strscpy(req->category, counter->category, sizeof(req->category));
 	strscpy(req->description, counter->description, sizeof(req->description));
+
+	return 0;
+}
+
+int v3d_perfmon_set_global_ioctl(struct drm_device *dev, void *data,
+				 struct drm_file *file_priv)
+{
+	struct v3d_file_priv *v3d_priv = file_priv->driver_priv;
+	struct drm_v3d_perfmon_set_global *req = data;
+	struct v3d_dev *v3d = to_v3d_dev(dev);
+	struct v3d_perfmon *perfmon;
+
+	if (req->flags & ~DRM_V3D_PERFMON_CLEAR_GLOBAL)
+		return -EINVAL;
+
+	/* If the request is to clear the global performance monitor. */
+	if (req->flags & DRM_V3D_PERFMON_CLEAR_GLOBAL) {
+		if (cmpxchg(&v3d->perfmon_info.global_perfmon, v3d->perfmon_info.global_perfmon, NULL) != NULL)
+			return 0;
+		else
+			return -EINVAL;
+	}
+
+	perfmon = v3d_perfmon_find(v3d_priv, req->id);
+	if (!perfmon)
+		return -EINVAL;
+
+	if (cmpxchg(&v3d->perfmon_info.global_perfmon, NULL, perfmon) != NULL)
+		return -EBUSY;
 
 	return 0;
 }

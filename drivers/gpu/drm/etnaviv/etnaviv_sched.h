@@ -16,6 +16,9 @@ struct etnaviv_gem_submit *to_etnaviv_submit(struct drm_sched_job *sched_job)
 	return container_of(sched_job, struct etnaviv_gem_submit, sched_job);
 }
 
+void etnaviv_job_start_stats(struct etnaviv_gem_submit *submit);
+void etnaviv_job_update_stats(struct etnaviv_gem_submit *submit);
+
 int etnaviv_sched_init(struct etnaviv_gpu *gpu);
 void etnaviv_sched_fini(struct etnaviv_gpu *gpu);
 int etnaviv_sched_push_job(struct etnaviv_gem_submit *submit);

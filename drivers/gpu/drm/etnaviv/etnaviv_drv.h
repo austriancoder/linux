@@ -28,10 +28,24 @@ struct etnaviv_iommu_global;
 
 #define ETNAVIV_SOFTPIN_START_ADDRESS	SZ_4M /* must be >= SUBALLOC_SIZE */
 
+struct etnaviv_stats {
+	u64 start_ns;
+	u64 enabled_ns;
+	u64 jobs_completed;
+
+	/*
+	 * This seqcount is used to protect the access to the GPU stats
+	 * variables. It must be used as, while we are reading the stats,
+	 * IRQs can happen and the stats can be updated.
+	 */
+	seqcount_t lock;
+};
+
 struct etnaviv_file_private {
 	int id;
 	struct etnaviv_iommu_context	*mmu;
 	struct drm_sched_entity		sched_entity[ETNA_MAX_PIPES];
+	struct etnaviv_stats 		stats[ETNA_MAX_PIPES];
 };
 
 struct etnaviv_drm_private {
@@ -87,6 +101,9 @@ void etnaviv_gem_describe_objects(struct etnaviv_drm_private *priv,
 	struct seq_file *m);
 #endif
 
+void etnaiviv_get_stats(const struct etnaviv_stats *stats, u64 timestamp,
+	u64 *active_runtime, u64 *jobs_completed);
+
 #define DBG(fmt, ...) DRM_DEBUG(fmt"\n", ##__VA_ARGS__)
 #define VERB(fmt, ...) if (0) DRM_DEBUG(fmt"\n", ##__VA_ARGS__)
 
@@ -124,6 +141,16 @@ static inline unsigned long etnaviv_timeout_to_jiffies(
 	ts = timespec64_sub(to, ts);
 
 	return timespec64_to_jiffies(&ts);
+}
+
+static inline char *etnaviv_exec_state_to_string(u32 exec_state)
+{
+	switch (exec_state) {
+	case ETNA_PIPE_2D: return "2D";
+	case ETNA_PIPE_3D: return "3D";
+	case ETNA_PIPE_VG: return "VG";
+	}
+	return "UNKNOWN";
 }
 
 #endif /* __ETNAVIV_DRV_H__ */

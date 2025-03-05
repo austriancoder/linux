@@ -16,6 +16,10 @@
 #include <linux/reset.h>
 #include <linux/thermal.h>
 
+#ifdef CONFIG_DEBUG_FS
+#include <linux/sched/clock.h>
+#endif
+
 #include "etnaviv_cmdbuf.h"
 #include "etnaviv_dump.h"
 #include "etnaviv_gpu.h"
@@ -911,6 +915,14 @@ int etnaviv_gpu_init(struct etnaviv_gpu *gpu)
 	for (i = 0; i < ARRAY_SIZE(gpu->event); i++)
 		complete(&gpu->event_free);
 
+	/* Setup statistics */
+	for (int pipe = 0; pipe < ETNA_MAX_PIPES; pipe++) {
+		struct etnaviv_stats *stats = &gpu->stats[pipe];
+
+		memset(stats, 0, sizeof(*stats));
+		seqcount_init(&stats->lock);
+	}
+
 	/* Now program the hardware */
 	mutex_lock(&gpu->lock);
 	etnaviv_gpu_hw_init(gpu);
@@ -951,6 +963,34 @@ static void verify_dma(struct etnaviv_gpu *gpu, struct dma_debug *debug)
 
 		if (debug->state[0] != debug->state[1])
 			break;
+	}
+}
+
+static void gpu_stats_show(struct etnaviv_gpu *gpu, struct seq_file *m)
+{
+	u64 timestamp = local_clock();
+
+	seq_puts(m, "\t queue\ttimestamp\tjobs\truntime\n");
+
+	for (int pipe = 0; pipe < ETNA_MAX_PIPES; pipe++) {
+		struct etnaviv_stats *stats = &gpu->stats[pipe];
+		u64 active_runtime, jobs_completed;
+
+		etnaiviv_get_stats(stats, timestamp, &active_runtime, &jobs_completed);
+
+		/* Each line will display the queue name, timestamp, the number
+		 * of jobs sent to that queue and the runtime, as can be seem here:
+		 *
+		 * queue	timestamp	jobs	runtime
+		 * bin		239043069420	22620	17438164056
+		 * render	239043069420	22619	27284814161
+		 * tfu		239043069420	8763	394592566
+		 * csd		239043069420	3168	10787905530
+		 * cache_clean	239043069420	6127	237375940
+		 */
+		seq_printf(m, "\t %s\t%llu\t%llu\t%llu\n",
+			   etnaviv_exec_state_to_string(pipe),
+			   timestamp, jobs_completed, active_runtime);
 	}
 }
 
@@ -1106,6 +1146,9 @@ int etnaviv_gpu_debugfs(struct etnaviv_gpu *gpu, struct seq_file *m)
 	seq_printf(m, "\t state 1: 0x%08x\n", debug.state[1]);
 	seq_printf(m, "\t last fetch 64 bit word: 0x%08x 0x%08x\n",
 		   dma_lo, dma_hi);
+
+	seq_puts(m, "\tstatistics\n");
+	gpu_stats_show(gpu, m);
 
 	ret = 0;
 
@@ -1439,6 +1482,11 @@ struct dma_fence *etnaviv_gpu_submit(struct etnaviv_gem_submit *submit)
 	}
 
 	gpu->event[event[0]].fence = gpu_fence;
+	kref_get(&submit->refcount);
+	gpu->event[event[0]].submit = submit;
+
+	etnaviv_job_start_stats(submit);
+
 	submit->cmdbuf.user_size = submit->cmdbuf.size - 8;
 	etnaviv_buffer_queue(gpu, submit->exec_state, submit->mmu_context,
 			     event[0], &submit->cmdbuf);
@@ -1599,6 +1647,9 @@ static irqreturn_t irq_handler(int irq, void *data)
 				gpu->sync_point_event = event;
 				queue_work(gpu->wq, &gpu->sync_point_work);
 			}
+
+			etnaviv_job_update_stats(gpu->event[event].submit);
+			etnaviv_submit_put(gpu->event[event].submit);
 
 			fence = gpu->event[event].fence;
 			if (!fence)

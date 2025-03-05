@@ -9,6 +9,7 @@
 #include <linux/of.h>
 #include <linux/of_device.h>
 #include <linux/platform_device.h>
+#include <linux/sched/clock.h>
 #include <linux/uaccess.h>
 
 #include <drm/drm_debugfs.h>
@@ -90,6 +91,9 @@ static int etnaviv_open(struct drm_device *dev, struct drm_file *file)
 			drm_sched_entity_init(&ctx->sched_entity[i],
 					      DRM_SCHED_PRIORITY_NORMAL, &sched,
 					      1, NULL);
+
+			memset(&gpu->stats[i], 0, sizeof(gpu->stats[i]));
+			seqcount_init(&gpu->stats[i].lock);
 		}
 	}
 
@@ -488,8 +492,49 @@ static const struct drm_ioctl_desc etnaviv_ioctls[] = {
 	ETNA_IOCTL(PM_QUERY_SIG, pm_query_sig, DRM_RENDER_ALLOW),
 };
 
+void etnaiviv_get_stats(const struct etnaviv_stats *stats, u64 timestamp,
+	u64 *active_runtime, u64 *jobs_completed)
+{
+	unsigned int seq;
+
+	do {
+		seq = read_seqcount_begin(&stats->lock);
+		*active_runtime = stats->enabled_ns;
+		if (stats->start_ns)
+			*active_runtime += timestamp - stats->start_ns;
+		*jobs_completed = stats->jobs_completed;
+	} while (read_seqcount_retry(&stats->lock, seq));
+}
+
 static void etnaviv_show_fdinfo(struct drm_printer *p, struct drm_file *file)
 {
+	struct etnaviv_file_private *ctx = file->driver_priv;
+	struct drm_device *dev = file->minor->dev;
+	struct etnaviv_drm_private *priv = dev->dev_private;
+	u64 timestamp = local_clock();
+
+	for (int pipe = 0; pipe < ETNA_MAX_PIPES; pipe++) {
+		if (!priv->gpu[pipe])
+			continue;
+
+		struct etnaviv_stats *stats = &ctx->stats[pipe];
+		u64 active_runtime, jobs_completed;
+
+		etnaiviv_get_stats(stats, timestamp, &active_runtime, &jobs_completed);
+
+		/* Note that, in case of a GPU reset, the time spent during an
+		 * attempt of executing the job is not computed in the runtime.
+		 */
+		drm_printf(p, "drm-engine-%s: \t%llu ns\n",
+			etnaviv_exec_state_to_string(pipe), active_runtime);
+
+		/* Note that we only count jobs that completed. Therefore, jobs
+		 * that were resubmitted due to a GPU reset are not computed.
+		 */
+		drm_printf(p, "etnaviv-jobs-%s: \t%llu jobs\n",
+			etnaviv_exec_state_to_string(pipe), jobs_completed);
+	}
+
 	drm_show_memory_stats(p, file);
 }
 

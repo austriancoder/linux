@@ -165,6 +165,9 @@ struct etnaviv_gpu {
 	unsigned int fe_waitcycles;
 	unsigned long base_rate_core;
 	unsigned long base_rate_shader;
+
+	/* Statistics: */
+	struct etnaviv_stats stats[ETNA_MAX_PIPES];
 };
 
 static inline void gpu_write(struct etnaviv_gpu *gpu, u32 reg, u32 data)

@@ -4,6 +4,7 @@
  */
 
 #include <linux/moduleparam.h>
+#include <linux/sched/clock.h>
 
 #include "etnaviv_drv.h"
 #include "etnaviv_dump.h"
@@ -17,6 +18,85 @@ static int etnaviv_job_hang_limit = 0;
 module_param_named(job_hang_limit, etnaviv_job_hang_limit, int , 0444);
 static int etnaviv_hw_jobs_limit = 4;
 module_param_named(hw_job_limit, etnaviv_hw_jobs_limit, int , 0444);
+
+void etnaviv_job_start_stats(struct etnaviv_gem_submit *submit)
+{
+	struct etnaviv_file_private *ctx = submit->ctx;
+	struct etnaviv_stats *global_stats = &submit->gpu->stats[submit->exec_state];
+	struct etnaviv_stats *local_stats = &ctx->stats[submit->exec_state];
+	u64 now = local_clock();
+	unsigned long flags;
+
+	/*
+	 * We only need to disable local interrupts to appease lockdep who
+	 * otherwise would think v3d_job_start_stats vs v3d_stats_update has an
+	 * unsafe in-irq vs no-irq-off usage problem. This is a false positive
+	 * because all the locks are per queue and stats type, and all jobs are
+	 * completely one at a time serialised. More specifically:
+	 *
+	 * 1. Locks for GPU queues are updated from interrupt handlers under a
+	 *    spin lock and started here with preemption disabled.
+	 *
+	 * 2. Locks for CPU queues are updated from the worker with preemption
+	 *    disabled and equally started here with preemption disabled.
+	 *
+	 * Therefore both are consistent.
+	 *
+	 * 3. Because next job can only be queued after the previous one has
+	 *    been signaled, and locks are per queue, there is also no scope for
+	 *    the start part to race with the update part.
+	 */
+	if (IS_ENABLED(CONFIG_LOCKDEP))
+		local_irq_save(flags);
+	else
+		preempt_disable();
+
+	write_seqcount_begin(&local_stats->lock);
+	local_stats->start_ns = now;
+	write_seqcount_end(&local_stats->lock);
+
+	write_seqcount_begin(&global_stats->lock);
+	global_stats->start_ns = now;
+	write_seqcount_end(&global_stats->lock);
+
+	if (IS_ENABLED(CONFIG_LOCKDEP))
+		local_irq_restore(flags);
+	else
+		preempt_enable();
+}
+
+static void etnaviv_stats_update(struct etnaviv_stats *stats, u64 now)
+{
+	write_seqcount_begin(&stats->lock);
+	stats->enabled_ns += now - stats->start_ns;
+	stats->jobs_completed++;
+	stats->start_ns = 0;
+	write_seqcount_end(&stats->lock);
+}
+
+void etnaviv_job_update_stats(struct etnaviv_gem_submit *submit)
+{
+	struct etnaviv_file_private *ctx = submit->ctx;
+	struct etnaviv_stats *global_stats = &submit->gpu->stats[submit->exec_state];
+	struct etnaviv_stats *local_stats = &ctx->stats[submit->exec_state];
+
+	u64 now = local_clock();
+	unsigned long flags;
+
+	/* See comment in etnaviv_job_start_stats() */
+	if (IS_ENABLED(CONFIG_LOCKDEP))
+		local_irq_save(flags);
+	else
+		preempt_disable();
+
+	etnaviv_stats_update(local_stats, now);
+	etnaviv_stats_update(global_stats, now);
+
+	if (IS_ENABLED(CONFIG_LOCKDEP))
+		local_irq_restore(flags);
+	else
+		preempt_enable();
+}
 
 static struct dma_fence *etnaviv_sched_run_job(struct drm_sched_job *sched_job)
 {

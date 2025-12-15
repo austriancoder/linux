@@ -1048,6 +1048,13 @@ enum drm_panthor_group_state_flags {
 	 * DRM_PANTHOR_GROUP_STATE_FATAL_FAULT is not.
 	 */
 	DRM_PANTHOR_GROUP_STATE_INNOCENT = 1 << 2,
+
+	/**
+	 * @DRM_PANTHOR_GROUP_STATE_QUEUE_FAULT: Group had recoverable faults.
+	 *
+	 * When a group ends up with this flag set, jobs can still be submitted to its queues.
+	 */
+	DRM_PANTHOR_GROUP_STATE_QUEUE_FAULT = 1 << 3,
 };
 
 /**
@@ -1069,8 +1076,8 @@ struct drm_panthor_group_get_state {
 	/** @fatal_queues: Bitmask of queues that faced fatal faults. */
 	__u32 fatal_queues;
 
-	/** @pad: MBZ */
-	__u32 pad;
+	/** @fatal_queues: Bitmask of queues that faced fatal faults. */
+	__u32 fault_queues;
 };
 
 /**

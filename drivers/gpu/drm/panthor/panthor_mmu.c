@@ -418,6 +418,9 @@ struct panthor_vm {
 	 * the original dummy BO reference.
 	 */
 	struct panthor_gem_object *dummy;
+
+	/** @fault: Fault information (if any) for this VM. */
+	struct panthor_vm_fault fault;
 };
 
 /**
@@ -800,6 +803,7 @@ out_enable_as:
 
 	/* If the VM is re-activated, we clear the fault. */
 	vm->unhandled_fault = false;
+	vm->fault = (struct panthor_vm_fault){ 0 };
 
 	/* Unhandled pagefault on this AS, clear the fault and enable the AS,
 	 * which re-enables interrupts.
@@ -1908,8 +1912,16 @@ static void panthor_mmu_irq_handler(struct panthor_device *ptdev, u32 status)
 		 */
 		gpu_write(mmu->irq.iomem, INT_CLEAR, mask);
 
-		if (ptdev->mmu->as.slots[as].vm)
-			ptdev->mmu->as.slots[as].vm->unhandled_fault = true;
+		if (ptdev->mmu->as.slots[as].vm) {
+			struct panthor_vm *vm = ptdev->mmu->as.slots[as].vm;
+
+			vm->unhandled_fault = true;
+			vm->fault.exception_type = AS_FAULTSTATUS_EXCEPTION_TYPE(status);
+			vm->fault.access_type = AS_FAULTSTATUS_ACCESS_TYPE(status);
+			vm->fault.source_id = AS_FAULTSTATUS_SOURCE_ID(status);
+			vm->fault.valid_address = true;
+			vm->fault.address = addr;
+		}
 
 		/* Disable the MMU to kill jobs on this AS. */
 		panthor_mmu_as_disable(ptdev, as, false);

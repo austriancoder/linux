@@ -1916,9 +1916,9 @@ static void panthor_mmu_irq_handler(struct panthor_device *ptdev, u32 status)
 			struct panthor_vm *vm = ptdev->mmu->as.slots[as].vm;
 
 			vm->unhandled_fault = true;
-			vm->fault.exception_type = AS_FAULTSTATUS_EXCEPTION_TYPE(status);
-			vm->fault.access_type = AS_FAULTSTATUS_ACCESS_TYPE(status);
-			vm->fault.source_id = AS_FAULTSTATUS_SOURCE_ID(status);
+			vm->fault.exception_type = AS_FAULTSTATUS_EXCEPTION_TYPE(fault_status);
+			vm->fault.access_type = AS_FAULTSTATUS_ACCESS_TYPE(fault_status);
+			vm->fault.source_id = AS_FAULTSTATUS_SOURCE_ID(fault_status);
 			vm->fault.valid_address = true;
 			vm->fault.address = addr;
 		}

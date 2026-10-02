@@ -4002,11 +4002,11 @@ int panthor_group_get_state(struct panthor_file *pfile,
 		get_state->fault_queues = group->fault_queues;
 	}
 
-	get_state->exception_type = group->fault.exception_type;
-	get_state->access_type = group->fault.access_type;
-	get_state->source_id = group->fault.source_id;
-	get_state->valid_address = group->fault.valid_address;
-	get_state->address = group->fault.address;
+	get_state->exception_type = group->fatal.exception_type;
+	get_state->access_type = group->fatal.access_type;
+	get_state->source_id = group->fatal.source_id;
+	get_state->valid_address = group->fatal.valid_address;
+	get_state->address = group->fatal.address;
 
 	fault_count = panthor_group_count_faults(sched, group);
 

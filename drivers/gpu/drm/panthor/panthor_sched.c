@@ -1535,19 +1535,22 @@ static u32 panthor_queue_set_ ## __type ## _info(struct panthor_device *ptdev,		
 												\
 	lockdep_assert_held(&sched->lock);							\
 												\
-	if (!iface || !queue)									\
+	if (!iface)										\
 		return 0;									\
 												\
 	const u32 exception = iface->output->__type;						\
 	const u64 info = iface->output->__type ## _info;					\
 												\
-	event = panthor_queue_create_event((__event), cs_id, exception);			\
+	if (queue) {										\
+		event = panthor_queue_create_event((__event), cs_id, exception);		\
 												\
-	if (!IS_ERR(event))									\
-		list_add_tail(&event->link, &queue->events);					\
-	else											\
-		drm_err(&ptdev->base, "Could not store fault notification, err = %ld",		\
-			PTR_ERR(event));							\
+		if (!IS_ERR(event))								\
+			list_add_tail(&event->link, &queue->events);				\
+		else										\
+			drm_err(&ptdev->base,							\
+				"Could not store fault notification, err = %ld\n",		\
+				PTR_ERR(event));						\
+	}											\
 												\
 	drm_warn(&ptdev->base,									\
 		 "CSG slot %d CS slot: %d\n"							\

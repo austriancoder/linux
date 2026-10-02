@@ -3612,6 +3612,7 @@ group_create_queue(struct panthor_group *group,
 	queue->fence_ctx.id = dma_fence_context_alloc(1);
 	spin_lock_init(&queue->fence_ctx.lock);
 	INIT_LIST_HEAD(&queue->fence_ctx.in_flight_jobs);
+	INIT_LIST_HEAD(&queue->events);
 
 	queue->priority = args->priority;
 
